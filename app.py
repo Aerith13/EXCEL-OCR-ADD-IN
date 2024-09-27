@@ -26,9 +26,12 @@ def index():
 @app.route('/ocr', methods=['POST'])
 def perform_ocr():
     # Get the image data from the request
-    image_data = request.json['image']
-    image_data = image_data.split(',')[1]  # Remove the "data:image/jpeg;base64," part
-    
+    if request.json and 'image' in request.json:
+        image_data = request.json['image']
+        image_data = image_data.split(',')[1]  # Remove the "data:image/jpeg;base64," part
+    else:
+        return jsonify({"error": "No image data provided"}), 400
+
     # Decode the base64 image
     image = Image.open(io.BytesIO(base64.b64decode(image_data)))
     
@@ -53,9 +56,16 @@ def commands():
 
 @app.route('/preprocess', methods=['POST'])
 def preprocess_image():
-    image_data = request.json['image']
-    image_data = image_data.split(',')[1]
-    image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+    if request.json and 'image' in request.json:
+        image_data = request.json['image']
+        image_data = image_data.split(',')[1]
+    else:
+        return jsonify({"error": "No image data provided"}), 400
+
+    try:
+        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+    except Exception as e:
+        return jsonify({"error": f"Failed to process image: {str(e)}"}), 400
     
     # Apply preprocessing (e.g., contrast enhancement)
     enhancer = ImageEnhance.Contrast(image)
