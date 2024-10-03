@@ -1,9 +1,8 @@
 flask==2.3.3
 flask-cors==4.0.0
-easyocr==1.7.1
 Pillow==10.0.1
 pyOpenSSL==23.2.0
-numpy==1.26.0
-opencv-python==4.8.0.76
 torch==1.10.0
-torchvision==0.11.1
+transformers==4.11.3
+easyocr==1.6.2
+numpy==1.21.0

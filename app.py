@@ -1,23 +1,22 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import easyocr
-import numpy as np
 from PIL import Image
 import io
 import base64
-from PIL import ImageEnhance
+from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
+import easyocr
+from typing import Dict, Any
+import numpy as np
 
 app = Flask(__name__, static_url_path='/assets', static_folder='assets')
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Initialize multiple EasyOCR readers
-readers = {
-    'en': easyocr.Reader(['en']),
-    'es': easyocr.Reader(['es']),
-    'fr': easyocr.Reader(['fr']),
-    'tr': easyocr.Reader(['tr']),
-    'tl': easyocr.Reader(['tl'])
-}
+# Load M2M100 model and tokenizer
+model = M2M100ForConditionalGeneration.from_pretrained("facebook/m2m100_418M")
+tokenizer = M2M100Tokenizer.from_pretrained("facebook/m2m100_418M")
+
+# Initialize EasyOCR reader
+reader = easyocr.Reader(['en'])  # Add more languages as needed
 
 @app.route('/')
 def index():
@@ -25,57 +24,41 @@ def index():
 
 @app.route('/ocr', methods=['POST'])
 def perform_ocr():
-    # Get the image data from the request
-    if request.json and 'image' in request.json:
-        image_data = request.json['image']
-        image_data = image_data.split(',')[1]  # Remove the "data:image/jpeg;base64," part
-    else:
+    data: Dict[str, Any] = request.get_json()
+    if not data or 'image' not in data:
         return jsonify({"error": "No image data provided"}), 400
 
-    # Decode the base64 image
+    image_data = data['image'].split(',')[1]
     image = Image.open(io.BytesIO(base64.b64decode(image_data)))
     
-    # Convert to numpy array
-    image_array = np.array(image)
-    
-    # Get the language from the request (default to English if not specified)
-    language = request.json.get('language', 'en')
-    
-    # Perform OCR with the specified language
-    reader = readers.get(language, readers['en'])
-    result = reader.readtext(image_array, detail=0, paragraph=True)
-    
-    # Join the results into a single string
-    text = ' '.join(result)
+    # Perform OCR with EasyOCR
+    result = reader.readtext(np.array(image))
+    text = ' '.join([item[1] for item in result])
     
     return jsonify({'text': text})
 
-@app.route('/commands.html')
-def commands():
-    return render_template('commands.html')
+@app.route('/translate', methods=['POST'])
+def translate_text():
+    data: Dict[str, Any] = request.get_json()
+    if not data:
+        return jsonify({"error": "No JSON data provided"}), 400
 
-@app.route('/preprocess', methods=['POST'])
-def preprocess_image():
-    if request.json and 'image' in request.json:
-        image_data = request.json['image']
-        image_data = image_data.split(',')[1]
-    else:
-        return jsonify({"error": "No image data provided"}), 400
+    text = data.get('text')
+    source_lang = data.get('source_lang')
+    target_lang = data.get('target_lang')
 
-    try:
-        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-    except Exception as e:
-        return jsonify({"error": f"Failed to process image: {str(e)}"}), 400
+    if not all([text, source_lang, target_lang]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    translated_text = translate(text, source_lang, target_lang)
     
-    # Apply preprocessing (e.g., contrast enhancement)
-    enhancer = ImageEnhance.Contrast(image)
-    enhanced_image = enhancer.enhance(1.5)  # Increase contrast by 50%
-    
-    buffered = io.BytesIO()
-    enhanced_image.save(buffered, format="PNG")
-    enhanced_image_data = base64.b64encode(buffered.getvalue()).decode('utf-8')
-    
-    return jsonify({'image': f'data:image/png;base64,{enhanced_image_data}'})
+    return jsonify({'translated': translated_text})
+
+def translate(text, src_lang, tgt_lang):
+    tokenizer.src_lang = src_lang
+    encoded = tokenizer(text, return_tensors="pt")
+    generated_tokens = model.generate(**encoded, forced_bos_token_id=tokenizer.get_lang_id(tgt_lang))
+    return tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
 
 if __name__ == '__main__':
     app.run(ssl_context=('localhost.pem', 'localhost-key.pem'), host='localhost', port=5000, debug=True)

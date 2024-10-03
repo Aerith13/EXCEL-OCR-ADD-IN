@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>mabagtit kamin</title>
+    <title>OCR and Translation Tool</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropper/4.1.0/cropper.min.css">
     <style>
         body {
@@ -26,7 +26,7 @@
             max-width: 100%;
             display: block;
         }
-        #result {
+        #result, #translationResult {
             margin-top: 20px;
             white-space: pre-wrap;
         }
@@ -39,7 +39,7 @@
     </style>
 </head>
 <body>
-    <h1>Excel OCR Add-in v.7 🤯</h1>
+    <h1>OCR and Translation Tool</h1>
     <div id="dropZone">Drag and drop an image file here or click to select</div>
     <input type="file" id="fileInput" style="display: none;" accept="image/*">
     <div id="imageContainer">
@@ -50,15 +50,23 @@
         <button id="selectAreaButton" style="display: none;">Select Area</button>
         <button id="performOCRButton" style="display: none;">Perform OCR</button>
     </div>
-    <!-- Add language selection dropdown -->
-    <select id="languageSelect" style="margin-top: 10px;">
+    <select id="sourceLang" style="margin-top: 10px;">
         <option value="en">English</option>
         <option value="es">Spanish</option>
         <option value="fr">French</option>
-        <option value="tr">Turkish</option>
-        <option value="tl">Tagalog</option>
+        <option value="de">German</option>
+        <option value="zh">Chinese</option>
     </select>
+    <select id="targetLang" style="margin-top: 10px;">
+        <option value="en">English</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="de">German</option>
+        <option value="zh">Chinese</option>
+    </select>
+    <button id="translateButton" style="display: none;">Translate</button>
     <div id="result"></div>
+    <div id="translationResult"></div>
     <div id="progressBar" style="display: none; width: 100%; background-color: #f0f0f0;">
         <div id="progressIndicator" style="width: 0%; height: 20px; background-color: #4CAF50;"></div>
     </div>
@@ -71,7 +79,9 @@
         const uploadButton = document.getElementById('uploadButton');
         const selectAreaButton = document.getElementById('selectAreaButton');
         const performOCRButton = document.getElementById('performOCRButton');
+        const translateButton = document.getElementById('translateButton');
         const resultDiv = document.getElementById('result');
+        const translationResultDiv = document.getElementById('translationResult');
         let cropper;
 
         dropZone.addEventListener('click', () => fileInput.click());
@@ -81,6 +91,7 @@
         uploadButton.addEventListener('click', () => fileInput.click());
         selectAreaButton.addEventListener('click', toggleCropping);
         performOCRButton.addEventListener('click', performOCR);
+        translateButton.addEventListener('click', translateText);
 
         function handleDrop(e) {
             e.preventDefault();
@@ -137,22 +148,20 @@
             } else {
                 imageData = preview.src;
             }
-            const language = document.getElementById('languageSelect').value;
             fetch('/ocr', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ 
-                    image: imageData,
-                    language: language
+                    image: imageData
                 }),
             })
             .then(response => response.json())
             .then(data => {
                 updateProgress(100);
                 resultDiv.textContent = data.text;
-                document.getElementById('exportToExcelButton').style.display = 'inline-block';
+                translateButton.style.display = 'inline-block';
             })
             .catch(error => {
                 updateProgress(100);
@@ -161,61 +170,34 @@
             });
         }
 
+        function translateText() {
+            const text = resultDiv.textContent;
+            const sourceLang = document.getElementById('sourceLang').value;
+            const targetLang = document.getElementById('targetLang').value;
+
+            fetch('/translate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    text: text,
+                    source_lang: sourceLang,
+                    target_lang: targetLang
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                translationResultDiv.textContent = data.translated;
+            })
+            .catch(error => {
+                console.error('Translation Error:', error);
+                translationResultDiv.textContent = 'An error occurred during translation.';
+            });
+        }
+
         function updateProgress(progress) {
             document.getElementById('progressIndicator').style.width = `${progress}%`;
-        }
-    </script>
-
-    <input type="file" id="batchFileInput" multiple style="display: none;" accept="image/*">
-    <button id="batchProcessButton">Batch Process</button>
-
-    <script>
-        document.getElementById('batchProcessButton').addEventListener('click', () => {
-            document.getElementById('batchFileInput').click();
-        });
-
-        document.getElementById('batchFileInput').addEventListener('change', handleBatchFiles);
-
-        async function handleBatchFiles(e) {
-            const files = e.target.files;
-            let results = [];
-            for (let file of files) {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const imageData = e.target.result;
-                    const result = await performOCRForBatch(imageData);
-                    results.push(result);
-                    if (results.length === files.length) {
-                        displayBatchResults(results);
-                    }
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        async function performOCRForBatch(imageData) {
-            // Similar to performOCR, but return the result instead of updating UI
-            // ... implement OCR logic ...
-        }
-
-        function displayBatchResults(results) {
-            // Display batch results in the UI
-            // ... implement display logic ...
-        }
-    </script>
-
-    <button id="exportToExcelButton" style="display: none;">Export to Excel</button>
-
-    <script>
-        document.getElementById('exportToExcelButton').addEventListener('click', exportToExcel);
-
-        function exportToExcel() {
-            Excel.run(async (context) => {
-                const sheet = context.workbook.worksheets.getActiveWorksheet();
-                const range = sheet.getRange("A1");
-                range.values = [[resultDiv.textContent]];
-                await context.sync();
-            });
         }
     </script>
 </body>
