@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response
 from flask_cors import CORS
 from PIL import Image
 import io
@@ -7,6 +7,9 @@ from transformers import M2M100ForConditionalGeneration, M2M100Tokenizer
 import easyocr
 from typing import Dict, Any
 import numpy as np
+import time
+from pyngrok import ngrok
+import os
 
 app = Flask(__name__, static_url_path='/assets', static_folder='assets')
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -17,6 +20,11 @@ tokenizer = M2M100Tokenizer.from_pretrained("facebook/m2m100_418M")
 
 # Initialize EasyOCR reader
 reader = easyocr.Reader(['en'])  # Add more languages as needed
+
+# Start ngrok
+ngrok.set_auth_token("2mvdbKaN0WGhsWJLNR6dja75qDb_4C2an6GPPfpZEmZHQ91sW")  # Optional: Set your ngrok auth token if you have one
+public_url = ngrok.connect("5000")  # Expose your Flask app on port 5000 as a string
+print(" * ngrok tunnel \"{}\" -> \"http://127.0.0.1:5000\"".format(public_url))
 
 @app.route('/')
 def index():
@@ -50,6 +58,12 @@ def translate_text():
     if not all([text, source_lang, target_lang]):
         return jsonify({"error": "Missing required fields"}), 400
 
+    # Simulate long-running translation process
+    total_steps = 10  # Example total steps for progress
+    for step in range(total_steps):
+        time.sleep(0.5)  # Simulate work being done
+        # Here you would update the progress in a real application
+
     translated_text = translate(text, source_lang, target_lang)
     
     return jsonify({'translated': translated_text})
@@ -61,4 +75,4 @@ def translate(text, src_lang, tgt_lang):
     return tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)[0]
 
 if __name__ == '__main__':
-    app.run(ssl_context=('localhost.pem', 'localhost-key.pem'), host='localhost', port=5000, debug=True)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

@@ -6,31 +6,26 @@
     xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
     xsi:type="TaskPaneApp">
 
-    <!-- Basic Settings -->
     <Id>12345678-1234-1234-1234-123456789012</Id>
     <Version>1.0.0.0</Version>
-    <ProviderName>Your Company Name</ProviderName>
+    <ProviderName>Desiree-JP Inc. 🥶</ProviderName>
     <DefaultLocale>en-US</DefaultLocale>
-    <DisplayName DefaultValue="Excel OCR Add-in v.7 🤯" />
+    <DisplayName DefaultValue="Excel OCR Add-in v.7 🤗" />
     <Description DefaultValue="An OCR add-in for Excel"/>
 
-    <!-- Icon for the add-in -->
-    <IconUrl DefaultValue="https://www.contoso.com/assets/icon-32.png" />
-    <HighResolutionIconUrl DefaultValue="https://www.contoso.com/assets/icon-64.png"/>
+    <IconUrl DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-32.png" />
+    <HighResolutionIconUrl DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-64.png"/>
 
-    <!-- Supported Office versions and platforms -->
     <SupportedHosts>
         <Host Name="Workbook" />
     </SupportedHosts>
-    
+
     <DefaultSettings>
-        <SourceLocation DefaultValue="https://localhost:5000/" />
+        <SourceLocation DefaultValue="https://a871-103-137-204-18.ngrok-free.app" />
     </DefaultSettings>
 
-    <!-- Permissions needed by the add-in -->
     <Permissions>ReadWriteDocument</Permissions>
 
-    <!-- Version Overrides for newer Office versions -->
     <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
         <Hosts>
             <Host xsi:type="Workbook">
@@ -74,19 +69,19 @@
         </Hosts>
         <Resources>
             <bt:Images>
-                <bt:Image id="Icon.16x16" DefaultValue="https://localhost:5000/assets/icon-16.png" />
-                <bt:Image id="Icon.32x32" DefaultValue="https://localhost:5000/assets/icon-32.png" />
-                <bt:Image id="Icon.80x80" DefaultValue="https://localhost:5000/assets/icon-80.png" />
+                <bt:Image id="Icon.16x16" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-16.png" />
+                <bt:Image id="Icon.32x32" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-32.png" />
+                <bt:Image id="Icon.80x80" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-80.png" />
             </bt:Images>
             <bt:Urls>
-                <bt:Url id="Commands.Url" DefaultValue="https://localhost:5000/commands.html" />
-                <bt:Url id="Taskpane.Url" DefaultValue="https://localhost:5000/" />
+                <bt:Url id="Commands.Url" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/commands.html" />
+                <bt:Url id="Taskpane.Url" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/" />
                 <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812" />
             </bt:Urls>
             <bt:ShortStrings>
                 <bt:String id="GetStarted.Title" DefaultValue="Get started with the Excel OCR Add-in" />
                 <bt:String id="CommandsGroup.Label" DefaultValue="OCR Commands" />
-                <bt:String id="TaskpaneButton.Label" DefaultValue="OCR" />
+                <bt:String id="TaskpaneButton.Label" DefaultValue="OCR Addin" />
             </bt:ShortStrings>
             <bt:LongStrings>
                 <bt:String id="GetStarted.Description" DefaultValue="Your OCR add-in loaded successfully. Go to the HOME tab and click the 'OCR' button to get started." />

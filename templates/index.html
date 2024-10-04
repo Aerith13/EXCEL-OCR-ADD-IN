@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OCR and Translation Tool</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropper/4.1.0/cropper.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: monospace;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
@@ -28,6 +29,10 @@
         }
         #result, #translationResult {
             margin-top: 20px;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            min-height: 50px;
             white-space: pre-wrap;
         }
         .button-group {
@@ -36,39 +41,53 @@
         .button-group button {
             margin-right: 10px;
         }
+        .progress {
+            width: 100%;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #4CAF50;
+            width: 0%;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1>OCR and Translation Tool</h1>
+    <h1>Excel OCR Addin v.7 🥶</h1>
     <div id="dropZone">Drag and drop an image file here or click to select</div>
     <input type="file" id="fileInput" style="display: none;" accept="image/*">
     <div id="imageContainer">
         <img id="preview" src="" alt="Image preview" style="display: none;">
     </div>
-    <div class="button-group">
-        <button id="uploadButton">Upload Image</button>
-        <button id="selectAreaButton" style="display: none;">Select Area</button>
-        <button id="performOCRButton" style="display: none;">Perform OCR</button>
+    <div class="button-group mb-3">
+        <button id="uploadButton" class="btn btn-success mr-2">Upload Image</button>
+        <button id="selectAreaButton" class="btn btn-success mr-2" style="display: none;">Select Area</button>
+        <button id="performOCRButton" class="btn btn-success mr-2" style="display: none;">Perform OCR</button>
+        <button id="clearButton" class="btn btn-danger" style="display: none;">Clear</button>
     </div>
-    <select id="sourceLang" style="margin-top: 10px;">
+    <select id="sourceLang" class="form-control mb-2">
         <option value="en">English</option>
         <option value="es">Spanish</option>
         <option value="fr">French</option>
-        <option value="de">German</option>
-        <option value="zh">Chinese</option>
     </select>
-    <select id="targetLang" style="margin-top: 10px;">
+    <select id="targetLang" class="form-control mb-2">
         <option value="en">English</option>
         <option value="es">Spanish</option>
         <option value="fr">French</option>
-        <option value="de">German</option>
-        <option value="zh">Chinese</option>
     </select>
-    <button id="translateButton" style="display: none;">Translate</button>
-    <div id="result"></div>
-    <div id="translationResult"></div>
-    <div id="progressBar" style="display: none; width: 100%; background-color: #f0f0f0;">
-        <div id="progressIndicator" style="width: 0%; height: 20px; background-color: #4CAF50;"></div>
+    <button id="translateButton" class="btn btn-primary mb-3" style="display: none;">Translate</button>
+    
+    <div id="result">OCR results</div>
+    <div class="progress">
+        <div id="ocrProgressBar" class="progress-bar" style="background-color: #4CAF50;"></div>
+    </div>
+    
+    <div id="translationResult">Translation results</div>
+    <div class="progress">
+        <div id="translationProgressBar" class="progress-bar" style="background-color: #2196F3;"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
@@ -82,6 +101,7 @@
         const translateButton = document.getElementById('translateButton');
         const resultDiv = document.getElementById('result');
         const translationResultDiv = document.getElementById('translationResult');
+        const clearButton = document.getElementById('clearButton');
         let cropper;
 
         dropZone.addEventListener('click', () => fileInput.click());
@@ -92,6 +112,7 @@
         selectAreaButton.addEventListener('click', toggleCropping);
         performOCRButton.addEventListener('click', performOCR);
         translateButton.addEventListener('click', translateText);
+        clearButton.addEventListener('click', clearAll);
 
         function handleDrop(e) {
             e.preventDefault();
@@ -112,6 +133,7 @@
                         preview.style.display = 'block';
                         selectAreaButton.style.display = 'inline-block';
                         performOCRButton.style.display = 'inline-block';
+                        clearButton.style.display = 'inline-block'; // Show the clear button
                         if (cropper) {
                             cropper.destroy();
                         }
@@ -139,8 +161,8 @@
 
         function performOCR() {
             resultDiv.textContent = 'Processing...';
-            document.getElementById('progressBar').style.display = 'block';
-            updateProgress(10);
+            updateProgress('ocr', 0); // Start OCR progress at 0%
+            
             let imageData;
             if (cropper) {
                 const canvas = cropper.getCroppedCanvas();
@@ -148,6 +170,7 @@
             } else {
                 imageData = preview.src;
             }
+
             fetch('/ocr', {
                 method: 'POST',
                 headers: {
@@ -157,14 +180,20 @@
                     image: imageData
                 }),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
-                updateProgress(100);
+                updateProgress('ocr', 100); // Complete OCR progress
                 resultDiv.textContent = data.text;
                 translateButton.style.display = 'inline-block';
+                clearButton.style.display = 'inline-block'; // Show the clear button
             })
             .catch(error => {
-                updateProgress(100);
+                updateProgress('ocr', 100); // Complete progress on error
                 console.error('OCR Error:', error);
                 resultDiv.textContent = 'An error occurred during OCR processing.';
             });
@@ -175,6 +204,9 @@
             const sourceLang = document.getElementById('sourceLang').value;
             const targetLang = document.getElementById('targetLang').value;
 
+            // Show translation progress bar
+            updateProgress('translation', 0); // Start translation progress at 0%
+            
             fetch('/translate', {
                 method: 'POST',
                 headers: {
@@ -186,18 +218,56 @@
                     target_lang: targetLang
                 }),
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
             .then(data => {
+                updateProgress('translation', 100); // Complete translation progress
                 translationResultDiv.textContent = data.translated;
             })
             .catch(error => {
+                updateProgress('translation', 100); // Complete progress on error
                 console.error('Translation Error:', error);
                 translationResultDiv.textContent = 'An error occurred during translation.';
             });
         }
 
-        function updateProgress(progress) {
-            document.getElementById('progressIndicator').style.width = `${progress}%`;
+        function updateProgress(type, progress) {
+            if (type === 'ocr') {
+                document.getElementById('ocrProgressBar').style.width = `${progress}%`;
+            } else if (type === 'translation') {
+                document.getElementById('translationProgressBar').style.width = `${progress}%`;
+            }
+        }
+
+        function clearAll() {
+            // Reset the image preview
+            preview.src = '';
+            preview.style.display = 'none'; // Hide the image preview
+            
+            // Reset the result and translation result divs
+            resultDiv.textContent = 'OCR results';
+            translationResultDiv.textContent = 'Translation results';
+            
+            // Reset progress bars
+            updateProgress('ocr', 0);
+            updateProgress('translation', 0);
+            
+            // Hide buttons
+            selectAreaButton.style.display = 'none';
+            performOCRButton.style.display = 'none';
+            translateButton.style.display = 'none';
+            clearButton.style.display = 'none';
+            
+            // Reset any cropping tool if used
+            if (cropper) {
+                cropper.destroy();
+                cropper = null; // Reset cropper
+                selectAreaButton.textContent = 'Select Area'; // Reset button text
+            }
         }
     </script>
 </body>
