@@ -13,15 +13,15 @@
     <DisplayName DefaultValue="Excel OCR Add-in v.7 🤗" />
     <Description DefaultValue="An OCR add-in for Excel"/>
 
-    <IconUrl DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-32.png" />
-    <HighResolutionIconUrl DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-64.png"/>
+    <IconUrl DefaultValue="http://192.168.50.139:5000/assets/icon-32.png" />
+    <HighResolutionIconUrl DefaultValue="http://192.168.50.139:5000/assets/icon-64.png"/>
 
     <SupportedHosts>
         <Host Name="Workbook" />
     </SupportedHosts>
 
     <DefaultSettings>
-        <SourceLocation DefaultValue="https://a871-103-137-204-18.ngrok-free.app" />
+        <SourceLocation DefaultValue="http://192.168.50.139:5000/" />
     </DefaultSettings>
 
     <Permissions>ReadWriteDocument</Permissions>
@@ -69,13 +69,13 @@
         </Hosts>
         <Resources>
             <bt:Images>
-                <bt:Image id="Icon.16x16" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-16.png" />
-                <bt:Image id="Icon.32x32" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-32.png" />
-                <bt:Image id="Icon.80x80" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/assets/icon-80.png" />
+                <bt:Image id="Icon.16x16" DefaultValue="http://192.168.50.139:5000/assets/icon-16.png" />
+                <bt:Image id="Icon.32x32" DefaultValue="http://192.168.50.139:5000/assets/icon-32.png" />
+                <bt:Image id="Icon.80x80" DefaultValue="http://192.168.50.139:5000/assets/icon-80.png" />
             </bt:Images>
             <bt:Urls>
-                <bt:Url id="Commands.Url" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/commands.html" />
-                <bt:Url id="Taskpane.Url" DefaultValue="https://a871-103-137-204-18.ngrok-free.app/" />
+                <bt:Url id="Commands.Url" DefaultValue="http://192.168.50.139:5000/commands.html" />
+                <bt:Url id="Taskpane.Url" DefaultValue="http://192.168.50.139:5000/" />
                 <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://go.microsoft.com/fwlink/?LinkId=276812" />
             </bt:Urls>
             <bt:ShortStrings>
