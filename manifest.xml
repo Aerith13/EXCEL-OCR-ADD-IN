@@ -13,8 +13,8 @@
     <DisplayName DefaultValue="Excel OCR Add-in v.7 🤗" />
     <Description DefaultValue="An OCR add-in for Excel"/>
 
-    <IconUrl DefaultValue="https://312a-161-49-218-183.ngrok-free.app/assets/icon-32.png" />
-    <HighResolutionIconUrl DefaultValue="https://312a-161-49-218-183.ngrok-free.app/assets/icon-64.png"/>
+    <IconUrl DefaultValue="https://ibb.co/wCzhMCq" />
+    <HighResolutionIconUrl DefaultValue="https://ibb.co/wCzhMCq"/>
 
     <SupportedHosts>
         <Host Name="Workbook" />
@@ -69,9 +69,9 @@
         </Hosts>
         <Resources>
             <bt:Images>
-                <bt:Image id="Icon.16x16" DefaultValue="https://312a-161-49-218-183.ngrok-free.app/assets/icon-16.png" />
-                <bt:Image id="Icon.32x32" DefaultValue="https://312a-161-49-218-183.ngrok-free.app/assets/icon-32.png" />
-                <bt:Image id="Icon.80x80" DefaultValue="https://312a-161-49-218-183.ngrok-free.app/assets/icon-80.png" />
+                <bt:Image id="Icon.16x16" DefaultValue="https://ibb.co/Bzdx1Dk" />
+                <bt:Image id="Icon.32x32" DefaultValue="https://ibb.co/wCzhMCq" />
+                <bt:Image id="Icon.80x80" DefaultValue="https://ibb.co/6t5rj2b" />
             </bt:Images>
             <bt:Urls>
                 <bt:Url id="Commands.Url" DefaultValue="https://312a-161-49-218-183.ngrok-free.app/commands.html" />
@@ -81,7 +81,7 @@
             <bt:ShortStrings>
                 <bt:String id="GetStarted.Title" DefaultValue="Get started with the Excel OCR Add-in" />
                 <bt:String id="CommandsGroup.Label" DefaultValue="OCR Commands" />
-                <bt:String id="TaskpaneButton.Label" DefaultValue="OCR Addin" />
+                <bt:String id="TaskpaneButton.Label" DefaultValue="Excel OCR Addin" />
             </bt:ShortStrings>
             <bt:LongStrings>
                 <bt:String id="GetStarted.Description" DefaultValue="Your OCR add-in loaded successfully. Go to the HOME tab and click the 'OCR' button to get started." />
