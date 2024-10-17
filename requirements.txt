@@ -6,3 +6,4 @@ torch==1.13.0
 transformers==4.11.3
 easyocr==1.6.2
 numpy==1.21.0
+

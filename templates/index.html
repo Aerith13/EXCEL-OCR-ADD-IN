@@ -68,6 +68,7 @@
         <button id="performOCRButton" class="btn btn-success mr-2" style="display: none;">Perform OCR</button>
         <button id="clearButton" class="btn btn-danger" style="display: none;">Clear</button>
     </div>
+
     <select id="sourceLang" class="form-control mb-2">
         <option value="en">English</option>
         <option value="es">Spanish</option>
@@ -90,7 +91,15 @@
         <div id="translationProgressBar" class="progress-bar" style="background-color: #9f5d73;"></div>
     </div>
 
+    <div class="button-group mb-4">
+        <button id="selectAreaButtonExcel" class="btn btn-success mr-2">Select Area in Excel</button>
+        <button id="postOCRButton" class="btn btn-success mr-2" style="display: none;">POST OCR Results</button>
+        <button id="postTranslationButton" class="btn btn-success mr-2" style="display: none;">POST Translation Results</button>
+    </div>
+    <div id="statusMessage" class="mt-2"></div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     <script>
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
@@ -269,6 +278,114 @@
                 selectAreaButton.textContent = 'Select Area'; // Reset button text
             }
         }
+
+        // Initialize Office.js
+        Office.onReady((info) => {
+            if (info.host === Office.HostType.Excel) {
+                document.getElementById('selectAreaButtonExcel').addEventListener('click', selectAreaInExcel);
+                document.getElementById('postOCRButton').addEventListener('click', postOCRResults);
+                document.getElementById('postTranslationButton').addEventListener('click', postTranslationResults);
+            }
+        });
+
+        // Excel interaction functions
+        function selectAreaInExcel() {
+            Excel.run(async (context) => {
+                try {
+                    const range = context.workbook.getSelectedRanges();
+                    range.load("address,areas");
+                    await context.sync();
+                    
+                    let totalCells = 0;
+                    range.areas.items.forEach(area => {
+                        totalCells += area.rowCount * area.columnCount;
+                    });
+                    
+                    window.selectedExcelRanges = range.areas.items.map(area => area.address);
+                    
+                    document.getElementById('postOCRButton').style.display = 'inline-block';
+                    document.getElementById('postTranslationButton').style.display = 'inline-block';
+                    
+                    document.getElementById('statusMessage').textContent = `Areas selected: ${window.selectedExcelRanges.join(', ')} (${totalCells} cells)`;
+                } catch (error) {
+                    console.error(error);
+                    document.getElementById('statusMessage').textContent = "Failed to select areas. Please try again.";
+                }
+            });
+        }
+
+        function postOCRResults() {
+            if (!window.selectedExcelRanges || window.selectedExcelRanges.length === 0) {
+                document.getElementById('statusMessage').textContent = "Please select area(s) in Excel first.";
+                return;
+            }
+            
+            const ocrWords = document.getElementById('result').textContent.split(' ');
+            if (ocrWords.length === 0) {
+                document.getElementById('statusMessage').textContent = "No OCR results to post. Please perform OCR first.";
+                return;
+            }
+            
+            Excel.run(async (context) => {
+                try {
+                    let wordIndex = 0;
+                    for (let rangeAddress of window.selectedExcelRanges) {
+                        const range = context.workbook.worksheets.getActiveWorksheet().getRange(rangeAddress);
+                        range.load("rowCount,columnCount");
+                        await context.sync();
+                        
+                        const cellCount = range.rowCount * range.columnCount;
+                        const wordsForThisRange = ocrWords.slice(wordIndex, wordIndex + cellCount);
+                        wordIndex += cellCount;
+                        
+                        if (wordsForThisRange.length > 0) {
+                            const values = wordsForThisRange.map(word => [word]);
+                            range.values = values;
+                        }
+                    }
+                    
+                    await context.sync();
+                    document.getElementById('statusMessage').textContent = "OCR results successfully posted to Excel.";
+                } catch (error) {
+                    console.error(error);
+                    document.getElementById('statusMessage').textContent = "Failed to post OCR results. Please try again.";
+                }
+            });
+        }
+
+        function postTranslationResults() {
+            if (!window.selectedExcelRange) {
+                document.getElementById('statusMessage').textContent = "Please select an area in Excel first.";
+                return;
+            }
+            
+            const translatedText = document.getElementById('translationResult').textContent;
+            if (!translatedText.trim()) {
+                document.getElementById('statusMessage').textContent = "No translation results to post. Please perform translation first.";
+                return;
+            }
+            
+            Excel.run(async (context) => {
+                try {
+                    const range = context.workbook.worksheets.getActiveWorksheet().getRange(window.selectedExcelRange);
+                    range.values = [[translatedText]];
+                    await context.sync();
+                    document.getElementById('statusMessage').textContent = "Translation results successfully posted to Excel.";
+                } catch (error) {
+                    console.error(error);
+                    document.getElementById('statusMessage').textContent = "Failed to post translation results. Please try again.";
+                }
+            });
+        }
+
+        function updateButtonStates(ocrDone, translationDone) {
+            document.getElementById('postOCRButton').disabled = !ocrDone;
+            document.getElementById('postTranslationButton').disabled = !translationDone;
+        }
+
+        // Call this function after OCR and translation operations
+        updateButtonStates(true, false); // After OCR is done
+        updateButtonStates(true, true); // After translation is done
     </script>
 </body>
 </html>

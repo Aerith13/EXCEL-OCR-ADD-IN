@@ -22,9 +22,9 @@ tokenizer = M2M100Tokenizer.from_pretrained("facebook/m2m100_418M")
 reader = easyocr.Reader(['en'])  # Add more languages as needed
 
 # Start ngrok
-ngrok.set_auth_token("2mvdbKaN0WGhsWJLNR6dja75qDb_4C2an6GPPfpZEmZHQ91sW")  # Optional: Set your ngrok auth token if you have one
-public_url = ngrok.connect("5000")  # Expose your Flask app on port 5000 as a string
-print(" * ngrok tunnel \"{}\" -> \"http://127.0.0.1:5000\"".format(public_url))
+#ngrok.set_auth_token("2mvdbKaN0WGhsWJLNR6dja75qDb_4C2an6GPPfpZEmZHQ91sW")  # Optional: Set your ngrok auth token if you have one
+#public_url = ngrok.connect("5000")  # Expose your Flask app on port 5000 as a string
+#print(" * ngrok tunnel \"{}\" -> \"http://127.0.0.1:5000\"".format(public_url))
 
 @app.route('/')
 def index():
@@ -41,9 +41,9 @@ def perform_ocr():
     
     # Perform OCR with EasyOCR
     result = reader.readtext(np.array(image))
-    text = ' '.join([item[1] for item in result])
+    words = [item[1] for item in result]
     
-    return jsonify({'text': text})
+    return jsonify({'words': words})
 
 @app.route('/translate', methods=['POST'])
 def translate_text():
