@@ -7,29 +7,68 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropper/4.1.0/cropper.min.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
+        :root {
+            /* Light theme variables */
+            --bg-color: #ffffff;
+            --text-color: #000000;
+            --primary-color: #4CAF50;
+            --secondary-color: #9f5d73;
+            --border-color: #ccc;
+            --dropzone-border: #9f5d73;
+            --result-bg: #CEE9CF;
+            --hover-bg: #b0cd9c;
+            --icon-filter: none;
+        }
+
+        [data-theme="dark"] {
+            /* Dark theme variables */
+            --bg-color: #312A31;
+            --text-color: #f5fdf8;
+            --primary-color: #3F8C42;
+            --secondary-color: #3F1C3E;
+            --border-color: #444;
+            --dropzone-border: #9b8699;
+            --result-bg: #555d55;
+            --hover-bg: #889f92;
+            --icon-filter: invert(1);
+        }
+
         body {
             font-family: monospace;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-color);
         }
         #dropZone {
-            border: 2px dashed #ccc;
+            border: 2px dashed var(--dropzone-border);
             padding: 20px;
             text-align: center;
             margin-bottom: 20px;
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-radius: 10px;
+        }
+        #dropZone:hover {
+            background-color: var(--hover-bg);
+            border-color: var(--primary-color);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
         #imageContainer {
-            max-width: 100%;
-            margin-top: 20px;
+            position: relative;
+            overflow: auto;
         }
-        #preview {
+        #preview, #documentPreview {
             max-width: 100%;
+            height: auto;
             display: block;
+            margin: 0 auto;
         }
         #result, #translationResult {
             margin-top: 20px;
-            background-color: #CEE9CF;
+            background-color: var(--result-bg);
             padding: 10px;
             border-radius: 5px;
             min-height: 50px;
@@ -53,12 +92,333 @@
             width: 0%;
             border-radius: 5px;
         }
+        .title-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+            position: relative;
+            width: 100%;
+        }
+
+        .title-container h1 {
+            margin: 0;
+            font-size: 24px;
+            color: var(--text-color);
+        }
+
+        .help-icon {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+        }
+
+        .help-icon img {
+            width: 100%;
+            height: 100%;
+            filter: var(--icon-filter);
+        }
+
+        .progress-container {
+            margin-bottom: 15px;
+        }
+        .progress-label {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .progress {
+            height: 25px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 0%;
+            background-color: #4CAF50;
+            color: white;
+            transition: width 0.5s ease;
+        }
+        .progress-text {
+            font-size: 12px;
+        }
+        #translationProgressBar {
+            background-color: #9f5d73;
+        }
+
+        #detectedLanguage {
+            background-color: var(--result-bg);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        #result[contenteditable="true"] {
+            border: 1px solid #4CAF50;
+            outline: none;
+            min-height: 100px;
+            padding: 10px;
+        }
+
+        #result[contenteditable="true"]:focus {
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+        }
+
+        /* Custom scrollbar styling */
+        #imageContainer::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #imageContainer::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        #imageContainer::-webkit-scrollbar-thumb {
+            background: #9f5d73;
+            border-radius: 4px;
+        }
+
+        #imageContainer::-webkit-scrollbar-thumb:hover {
+            background: #7d4859;
+        }
+
+        .cropper-controls button {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            margin: 0 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .cropper-controls button:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+        
+        .cropper-point {
+            width: 10px !important;
+            height: 10px !important;
+            background-color: #4CAF50 !important;
+        }
+        
+        .cropper-view-box {
+            outline: 2px solid #4CAF50 !important;
+        }
+        
+        .cropper-line {
+            background-color: #4CAF50 !important;
+        }
+
+        .theme-switch-wrapper {
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+        }
+
+        .theme-switch {
+            display: inline-block;
+            height: 34px;
+            position: relative;
+            width: 60px;
+        }
+
+        .theme-switch input {
+            display: none;
+        }
+
+        .slider {
+            background-color: var(--secondary-color);
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+        }
+
+        .slider:before {
+            background-color: #fff;
+            bottom: 4px;
+            content: "";
+            height: 26px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 26px;
+        }
+
+        .slider.round {
+            border-radius: 34px;
+        }
+
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .slider .sun, .slider .moon {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+        }
+
+        .slider .sun {
+            left: 5px;
+        }
+
+        .slider .moon {
+            right: 5px;
+        }
+
+        .date-box {
+            position: absolute;
+            border: 2px solid #ff6b6b;
+            background-color: rgba(255, 107, 107, 0.2);
+            pointer-events: none;
+            z-index: 100;
+            transform-origin: top left;
+        }
+
+        .date-label {
+            position: absolute;
+            background-color: #ff6b6b;
+            color: white;
+            padding: 2px 4px;
+            font-size: 12px;
+            border-radius: 2px;
+            top: -20px;
+            left: 0;
+            white-space: nowrap;
+            z-index: 101;
+            display: none; /* Hide the floating label since we're showing text inside the box */
+        }
+
+        .invoice-box {
+            position: absolute;
+            border: 2px solid #4287f5;
+            background-color: rgba(66, 135, 245, 0.2);
+            pointer-events: none;
+            z-index: 100;
+            transform-origin: top left;
+        }
+
+        .invoice-label {
+            position: absolute;
+            background-color: #4287f5;
+            color: white;
+            padding: 2px 4px;
+            font-size: 12px;
+            border-radius: 2px;
+            top: -20px;
+            left: 0;
+            white-space: nowrap;
+            z-index: 101;
+        }
+
+        .email-box {
+            position: absolute;
+            border: 2px solid #9c27b0;
+            background-color: rgba(156, 39, 176, 0.2);
+            pointer-events: none;
+            z-index: 100;
+            transform-origin: top left;
+        }
+
+        .email-label {
+            position: absolute;
+            background-color: #9c27b0;
+            color: white;
+            padding: 2px 4px;
+            font-size: 12px;
+            border-radius: 2px;
+            top: -20px;
+            left: 0;
+            white-space: nowrap;
+            z-index: 101;
+        }
+
+        .layout-box {
+            border: 2px solid;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .layout-box[data-type="header"] {
+            border-color: rgba(255, 0, 0, 0.7);
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+
+        .layout-box[data-type="amount"] {
+            border-color: rgba(0, 255, 0, 0.7);
+            background-color: rgba(0, 255, 0, 0.1);
+        }
+
+        .layout-box[data-type="table"] {
+            border-color: rgba(0, 0, 255, 0.7);
+            background-color: rgba(0, 0, 255, 0.1);
+        }
+
+        .layout-box[data-type="text"] {
+            border-color: rgba(255, 165, 0, 0.7);
+            background-color: rgba(255, 165, 0, 0.1);
+        }
+
+        .layout-label {
+            position: absolute;
+            top: -20px;
+            left: 0;
+            background-color: rgba(0, 255, 0, 0.8);
+            color: white;
+            padding: 2px 4px;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
     </style>
 </head>
 <body>
-    <h1>Excel OCR Addin v.7 🦑</h1>
-    <div id="dropZone">Drag and drop an image file here or click to select</div>
-    <input type="file" id="fileInput" style="display: none;" accept="image/*">
+    <div class="title-container">
+        <div class="theme-switch-wrapper">
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider round">
+                    <span class="sun">☀️</span>
+                    <span class="moon">🌙</span>
+                    
+                </div>
+            </label>
+        </div>
+        <h1>Excel OCR Addin</h1>
+        <a href="https://your-deployed-help-page-url.com" class="help-icon" title="Help" target="_blank">
+            <img src="https://img.icons8.com/material-outlined/24/000000/help.png" alt="Help">
+        </a>
+    </div>
+    <div id="dropZone">Drag and drop a file here or click to select</div>
+    <input type="file" id="fileInput" style="display: none;" accept="image/*,.pdf,.doc,.docx">
     <div id="imageContainer">
         <img id="preview" src="" alt="Image preview" style="display: none;">
     </div>
@@ -66,9 +426,12 @@
         <button id="uploadButton" class="btn btn-success mr-2">Upload Image</button>
         <button id="selectAreaButton" class="btn btn-success mr-2" style="display: none;">Select Area</button>
         <button id="performOCRButton" class="btn btn-success mr-2" style="display: none;">Perform OCR</button>
+        <button id="detectDatesButton" class="btn btn-warning mr-2" style="display: none;">Detect Fields</button>
+        <button id="analyzeLayoutButton" class="btn btn-info mr-2" style="display: none;">Analyze Layout</button>
         <button id="clearButton" class="btn btn-danger" style="display: none;">Clear</button>
     </div>
 
+    <div id="detectedLanguage"><span>Detected Language: </span></div>
     <select id="sourceLang" class="form-control mb-2">
         <option value="en">English</option>
         <option value="es">Spanish</option>
@@ -81,25 +444,39 @@
     </select>
     <button id="translateButton" class="btn btn-primary mb-3" style="display: none;">Translate</button>
     
-    <div id="result">OCR results</div>
-    <div class="progress">
-        <div id="ocrProgressBar" class="progress-bar" style="background-color: #4CAF50;"></div>
+    <div id="result" contenteditable="false">OCR results</div>
+    <div class="progress-container">
+        <div class="progress-label"></div>
+        <div class="progress">
+            <div id="ocrProgressBar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <span class="progress-text">0%</span>
+            </div>
+        </div>
     </div>
     
     <div id="translationResult">Translation results</div>
-    <div class="progress">
-        <div id="translationProgressBar" class="progress-bar" style="background-color: #9f5d73;"></div>
+    <div class="progress-container">
+        <div class="progress-label"></div>
+        <div class="progress">
+            <div id="translationProgressBar" class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <span class="progress-text">0%</span>
+            </div>
+        </div>
     </div>
 
     <div class="button-group mb-4">
         <button id="selectAreaButtonExcel" class="btn btn-success mr-2">Select Area in Excel</button>
         <button id="postOCRButton" class="btn btn-success mr-2" style="display: none;">POST OCR Results</button>
         <button id="postTranslationButton" class="btn btn-success mr-2" style="display: none;">POST Translation Results</button>
+        <button id="resetExcelButton" class="btn btn-danger mr-2" style="display: none;">Reset</button>
     </div>
     <div id="statusMessage" class="mt-2"></div>
 
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js"></script>
     <script>
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
@@ -111,6 +488,8 @@
         const resultDiv = document.getElementById('result');
         const translationResultDiv = document.getElementById('translationResult');
         const clearButton = document.getElementById('clearButton');
+        const detectDatesButton = document.getElementById('detectDatesButton');
+        const analyzeLayoutButton = document.getElementById('analyzeLayoutButton');
         let cropper;
 
         dropZone.addEventListener('click', () => fileInput.click());
@@ -122,6 +501,8 @@
         performOCRButton.addEventListener('click', performOCR);
         translateButton.addEventListener('click', translateText);
         clearButton.addEventListener('click', clearAll);
+        detectDatesButton.addEventListener('click', detectDates);
+        analyzeLayoutButton.addEventListener('click', analyzeLayout);
 
         function handleDrop(e) {
             e.preventDefault();
@@ -135,50 +516,206 @@
         function handleFiles(files) {
             if (files.length > 0) {
                 const file = files[0];
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
+                const reader = new FileReader();
+                
+                reader.onload = async (e) => {
+                    if (file.type.startsWith('image/')) {
+                        // Handle image files
                         preview.src = e.target.result;
                         preview.style.display = 'block';
-                        selectAreaButton.style.display = 'inline-block';
-                        performOCRButton.style.display = 'inline-block';
-                        clearButton.style.display = 'inline-block'; // Show the clear button
-                        if (cropper) {
-                            cropper.destroy();
+                        preview.style.maxWidth = '100%';
+                        preview.style.height = 'auto';
+                        preview.style.position = 'relative';
+                        
+                        // Remove any existing document preview
+                        const existingDocPreview = document.getElementById('documentPreview');
+                        if (existingDocPreview) {
+                            existingDocPreview.remove();
                         }
-                    };
-                    reader.readAsDataURL(file);
+                        
+                        // Clear any existing date boxes
+                        document.querySelectorAll('.date-box').forEach(box => box.remove());
+                        
+                        selectAreaButton.style.display = 'inline-block';
+                    } else if (file.type === 'application/pdf') {
+                        // Handle PDF preview
+                        const pdfData = new Uint8Array(reader.result);
+                        const loadingTask = pdfjsLib.getDocument({data: pdfData});
+                        
+                        try {
+                            const pdf = await loadingTask.promise;
+                            const page = await pdf.getPage(1);
+                            const viewport = page.getViewport({scale: 1.5});
+                            
+                            const canvas = document.createElement('canvas');
+                            canvas.id = 'pdfCanvas';
+                            canvas.width = viewport.width;
+                            canvas.height = viewport.height;
+                            
+                            const context = canvas.getContext('2d');
+                            const renderContext = {
+                                canvasContext: context,
+                                viewport: viewport
+                            };
+                            
+                            await page.render(renderContext).promise;
+                            
+                            // Create an image from the canvas
+                            const img = new Image();
+                            img.src = canvas.toDataURL('image/png');
+                            img.id = 'documentPreview';
+                            img.style.maxWidth = '100%';
+                            img.style.height = 'auto';
+                            
+                            // Replace preview image
+                            preview.style.display = 'none';
+                            const imageContainer = document.getElementById('imageContainer');
+                            imageContainer.innerHTML = '';
+                            imageContainer.appendChild(img);
+                            
+                            selectAreaButton.style.display = 'inline-block';
+                        } catch (error) {
+                            console.error('Error loading PDF:', error);
+                        }
+                    } else if (file.type === 'application/msword' || 
+                              file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                        // For Word documents, we'll need to convert to PDF first
+                        const formData = new FormData();
+                        formData.append('document', file);
+                        
+                        try {
+                            const response = await fetch('/convert-to-pdf', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            if (!response.ok) throw new Error('Conversion failed');
+                            
+                            const pdfBlob = await response.blob();
+                            const pdfUrl = URL.createObjectURL(pdfBlob);
+                            
+                            // Load the converted PDF
+                            const loadingTask = pdfjsLib.getDocument(pdfUrl);
+                            // ... (same PDF rendering code as above)
+                        } catch (error) {
+                            console.error('Error converting document:', error);
+                        }
+                    }
+                    
+                    performOCRButton.style.display = 'inline-block';
+                    detectDatesButton.style.display = 'inline-block';
+                    analyzeLayoutButton.style.display = 'inline-block';
+                    clearButton.style.display = 'inline-block';
+                };
+                
+                if (file.type === 'application/pdf') {
+                    reader.readAsArrayBuffer(file);
                 } else {
-                    alert('Please select an image file.');
+                    reader.readAsDataURL(file);
                 }
             }
         }
 
         function toggleCropping() {
+            const targetElement = document.getElementById('documentPreview') || preview;
+            const imageContainer = document.getElementById('imageContainer');
+            
             if (cropper) {
                 cropper.destroy();
                 cropper = null;
                 selectAreaButton.textContent = 'Select Area';
+                imageContainer.style.overflow = 'auto';
             } else {
-                cropper = new Cropper(preview, {
+                imageContainer.style.overflow = 'hidden';
+                cropper = new Cropper(targetElement, {
                     aspectRatio: NaN,
-                    viewMode: 1,
+                    viewMode: 2,
+                    background: true,
+                    zoomable: true,
+                    scalable: true,
+                    modal: true,
+                    guides: true,
+                    highlight: true,
+                    autoCrop: true,
+                    responsive: true,
+                    restore: true,
+                    wheelZoomRatio: 0.1,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: true,
+                    ready: function() {
+                        const cropperContainer = document.querySelector('.cropper-container');
+                        const controlsDiv = document.createElement('div');
+                        controlsDiv.className = 'cropper-controls';
+                        controlsDiv.style.cssText = `
+                            position: absolute;
+                            bottom: 10px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            background: rgba(0, 0, 0, 0.7);
+                            padding: 10px;
+                            border-radius: 5px;
+                            z-index: 100;
+                        `;
+                        
+                        controlsDiv.innerHTML = `
+                            <button onclick="rotateImage(-90)" title="Rotate Left">↺</button>
+                            <button onclick="rotateImage(90)" title="Rotate Right">↻</button>
+                            <button onclick="zoomImage(0.1)" title="Zoom In">+</button>
+                            <button onclick="zoomImage(-0.1)" title="Zoom Out">-</button>
+                            <button onclick="resetCropper()" title="Reset">↺ Reset</button>
+                        `;
+                        
+                        cropperContainer.appendChild(controlsDiv);
+                    }
                 });
                 selectAreaButton.textContent = 'Reset Selection';
             }
         }
 
+        function rotateImage(degree) {
+            if (cropper) {
+                cropper.rotate(degree);
+            }
+        }
+
+        function zoomImage(ratio) {
+            if (cropper) {
+                const currentZoom = cropper.getData().scaleX || 1;
+                cropper.zoomTo(currentZoom + ratio);
+            }
+        }
+
+        function resetCropper() {
+            if (cropper) {
+                cropper.reset();
+                cropper.setAspectRatio(NaN);
+            }
+        }
+
         function performOCR() {
             resultDiv.textContent = 'Processing...';
-            updateProgress('ocr', 0); // Start OCR progress at 0%
+            updateProgress('ocr', 0);
             
             let imageData;
             if (cropper) {
                 const canvas = cropper.getCroppedCanvas();
                 imageData = canvas.toDataURL('image/jpeg');
             } else {
-                imageData = preview.src;
+                const documentPreview = document.getElementById('documentPreview');
+                if (documentPreview) {
+                    imageData = documentPreview.src;
+                } else {
+                    imageData = preview.src;
+                }
             }
+
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                if (progress > 90) clearInterval(progressInterval);
+                updateProgress('ocr', progress);
+            }, 500);
 
             fetch('/ocr', {
                 method: 'POST',
@@ -196,33 +733,45 @@
                 return response.json();
             })
             .then(data => {
-                updateProgress('ocr', 100); // Complete OCR progress
+                clearInterval(progressInterval);
+                updateProgress('ocr', 100);
                 resultDiv.textContent = data.text;
+                resultDiv.contentEditable = "true";
+                document.getElementById('detectedLanguage').textContent = 'Detected Language: ' + data.detected_language;
                 translateButton.style.display = 'inline-block';
-                clearButton.style.display = 'inline-block'; // Show the clear button
+                clearButton.style.display = 'inline-block';
+                detectDatesButton.style.display = 'inline-block';
             })
             .catch(error => {
-                updateProgress('ocr', 100); // Complete progress on error
+                clearInterval(progressInterval);
+                updateProgress('ocr', 100);
                 console.error('OCR Error:', error);
                 resultDiv.textContent = 'An error occurred during OCR processing.';
             });
         }
 
         function translateText() {
-            const text = resultDiv.textContent;
+            const sourceText = resultDiv.textContent;
             const sourceLang = document.getElementById('sourceLang').value;
             const targetLang = document.getElementById('targetLang').value;
+            translationResultDiv.textContent = 'Translating...';
+            updateProgress('translation', 0);
 
-            // Show translation progress bar
-            updateProgress('translation', 0); // Start translation progress at 0%
-            
+            // Simulate progress steps
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 5;
+                if (progress > 90) clearInterval(progressInterval);
+                updateProgress('translation', progress);
+            }, 300);
+
             fetch('/translate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ 
-                    text: text,
+                body: JSON.stringify({
+                    text: sourceText,
                     source_lang: sourceLang,
                     target_lang: targetLang
                 }),
@@ -234,21 +783,37 @@
                 return response.json();
             })
             .then(data => {
-                updateProgress('translation', 100); // Complete translation progress
-                translationResultDiv.textContent = data.translated;
+                clearInterval(progressInterval);
+                updateProgress('translation', 100);
+                translationResultDiv.textContent = data.translated_text;
+                postTranslationButton.style.display = 'inline-block';
+                updateButtonStates(true, true);
             })
             .catch(error => {
-                updateProgress('translation', 100); // Complete progress on error
+                clearInterval(progressInterval);
+                updateProgress('translation', 100);
                 console.error('Translation Error:', error);
                 translationResultDiv.textContent = 'An error occurred during translation.';
+                updateButtonStates(true, false);
             });
         }
 
         function updateProgress(type, progress) {
-            if (type === 'ocr') {
-                document.getElementById('ocrProgressBar').style.width = `${progress}%`;
-            } else if (type === 'translation') {
-                document.getElementById('translationProgressBar').style.width = `${progress}%`;
+            const progressBar = document.getElementById(`${type}ProgressBar`);
+            const progressText = progressBar.querySelector('.progress-text');
+            const roundedProgress = Math.round(progress);
+            
+            progressBar.style.width = `${roundedProgress}%`;
+            progressBar.setAttribute('aria-valuenow', roundedProgress);
+            progressText.textContent = `${roundedProgress}%`;
+
+            // Add different colors based on progress
+            if (roundedProgress < 30) {
+                progressBar.style.backgroundColor = '#ff9999';
+            } else if (roundedProgress < 70) {
+                progressBar.style.backgroundColor = '#ffff99';
+            } else {
+                progressBar.style.backgroundColor = type === 'ocr' ? '#4CAF50' : '#9f5d73';
             }
         }
 
@@ -259,6 +824,7 @@
             
             // Reset the result and translation result divs
             resultDiv.textContent = 'OCR results';
+            resultDiv.contentEditable = "false"; // Disable editing
             translationResultDiv.textContent = 'Translation results';
             
             // Reset progress bars
@@ -269,13 +835,32 @@
             selectAreaButton.style.display = 'none';
             performOCRButton.style.display = 'none';
             translateButton.style.display = 'none';
+            analyzeLayoutButton.style.display = 'none';
             clearButton.style.display = 'none';
             
+            //Hide the Excels button (except select button)
+            postOCRButton.style.display = 'none';
+            postTranslationButton.style.display = 'none';
+
             // Reset any cropping tool if used
             if (cropper) {
                 cropper.destroy();
                 cropper = null; // Reset cropper
                 selectAreaButton.textContent = 'Select Area'; // Reset button text
+            }
+
+            // Reset detected language
+            document.getElementById('detectedLanguage').textContent = 'Detected Language: ';
+
+            // Hide status messages
+            document.getElementById('statusMessage').textContent = '';
+
+            // Reset the Excel range selection
+            window.selectedExcelRange = null;
+
+            const documentPreview = document.getElementById('documentPreview');
+            if (documentPreview) {
+                documentPreview.remove();
             }
         }
 
@@ -285,6 +870,7 @@
                 document.getElementById('selectAreaButtonExcel').addEventListener('click', selectAreaInExcel);
                 document.getElementById('postOCRButton').addEventListener('click', postOCRResults);
                 document.getElementById('postTranslationButton').addEventListener('click', postTranslationResults);
+                document.getElementById('resetExcelButton').addEventListener('click', resetExcelSelection);
             }
         });
 
@@ -292,63 +878,75 @@
         function selectAreaInExcel() {
             Excel.run(async (context) => {
                 try {
-                    const range = context.workbook.getSelectedRanges();
-                    range.load("address,areas");
+                    const range = context.workbook.getSelectedRange();
+                    range.load("address");
                     await context.sync();
-                    
-                    let totalCells = 0;
-                    range.areas.items.forEach(area => {
-                        totalCells += area.rowCount * area.columnCount;
-                    });
-                    
-                    window.selectedExcelRanges = range.areas.items.map(area => area.address);
+                    console.log(`Selected range: ${range.address}`);
                     
                     document.getElementById('postOCRButton').style.display = 'inline-block';
                     document.getElementById('postTranslationButton').style.display = 'inline-block';
+                    document.getElementById('resetExcelButton').style.display = 'inline-block';
                     
-                    document.getElementById('statusMessage').textContent = `Areas selected: ${window.selectedExcelRanges.join(', ')} (${totalCells} cells)`;
+                    window.selectedExcelRange = range.address;
+                    
+                    document.getElementById('statusMessage').textContent = `Area selected: ${range.address}`;
+                    document.getElementById('statusMessage').style.color = "green";
                 } catch (error) {
                     console.error(error);
-                    document.getElementById('statusMessage').textContent = "Failed to select areas. Please try again.";
+                    document.getElementById('statusMessage').textContent = "Failed to select area. Please try again.";
+                    document.getElementById('statusMessage').style.color = "red";
                 }
             });
         }
 
         function postOCRResults() {
-            if (!window.selectedExcelRanges || window.selectedExcelRanges.length === 0) {
-                document.getElementById('statusMessage').textContent = "Please select area(s) in Excel first.";
+            if (!window.selectedExcelRange) {
+                document.getElementById('statusMessage').textContent = "Please select an area in Excel first.";
+                document.getElementById('statusMessage').style.color = "red";
                 return;
             }
             
-            const ocrWords = document.getElementById('result').textContent.split(' ');
-            if (ocrWords.length === 0) {
+            const ocrText = document.getElementById('result').textContent;
+            if (!ocrText.trim()) {
                 document.getElementById('statusMessage').textContent = "No OCR results to post. Please perform OCR first.";
+                document.getElementById('statusMessage').style.color = "red";
                 return;
             }
             
             Excel.run(async (context) => {
                 try {
-                    let wordIndex = 0;
-                    for (let rangeAddress of window.selectedExcelRanges) {
-                        const range = context.workbook.worksheets.getActiveWorksheet().getRange(rangeAddress);
-                        range.load("rowCount,columnCount");
-                        await context.sync();
-                        
+                    const range = context.workbook.worksheets.getActiveWorksheet().getRange(window.selectedExcelRange);
+                    range.load("rowCount,columnCount");
+                    await context.sync();
+                    
+                    if (range.rowCount === 1 && range.columnCount === 1) {
+                        // Single cell selected
+                        range.values = [[ocrText]];
+                    } else {
+                        // Multiple cells selected
+                        const words = ocrText.split(/\s+/);
                         const cellCount = range.rowCount * range.columnCount;
-                        const wordsForThisRange = ocrWords.slice(wordIndex, wordIndex + cellCount);
-                        wordIndex += cellCount;
+                        const wordsToPost = words.slice(0, cellCount);
                         
-                        if (wordsForThisRange.length > 0) {
-                            const values = wordsForThisRange.map(word => [word]);
-                            range.values = values;
+                        const values = [];
+                        for (let i = 0; i < range.rowCount; i++) {
+                            const row = [];
+                            for (let j = 0; j < range.columnCount; j++) {
+                                const index = i * range.columnCount + j;
+                                row.push(index < wordsToPost.length ? wordsToPost[index] : "");
+                            }
+                            values.push(row);
                         }
+                        range.values = values;
                     }
                     
                     await context.sync();
                     document.getElementById('statusMessage').textContent = "OCR results successfully posted to Excel.";
+                    document.getElementById('statusMessage').style.color = "green";
                 } catch (error) {
                     console.error(error);
                     document.getElementById('statusMessage').textContent = "Failed to post OCR results. Please try again.";
+                    document.getElementById('statusMessage').style.color = "red";
                 }
             });
         }
@@ -356,24 +954,51 @@
         function postTranslationResults() {
             if (!window.selectedExcelRange) {
                 document.getElementById('statusMessage').textContent = "Please select an area in Excel first.";
+                document.getElementById('statusMessage').style.color = "red";
                 return;
             }
             
             const translatedText = document.getElementById('translationResult').textContent;
             if (!translatedText.trim()) {
                 document.getElementById('statusMessage').textContent = "No translation results to post. Please perform translation first.";
+                document.getElementById('statusMessage').style.color = "red";
                 return;
             }
             
             Excel.run(async (context) => {
                 try {
                     const range = context.workbook.worksheets.getActiveWorksheet().getRange(window.selectedExcelRange);
-                    range.values = [[translatedText]];
+                    range.load("rowCount,columnCount");
+                    await context.sync();
+                    
+                    if (range.rowCount === 1 && range.columnCount === 1) {
+                        // Single cell selected
+                        range.values = [[translatedText]];
+                    } else {
+                        // Multiple cells selected
+                        const words = translatedText.split(/\s+/);
+                        const cellCount = range.rowCount * range.columnCount;
+                        const wordsToPost = words.slice(0, cellCount);
+                        
+                        const values = [];
+                        for (let i = 0; i < range.rowCount; i++) {
+                            const row = [];
+                            for (let j = 0; j < range.columnCount; j++) {
+                                const index = i * range.columnCount + j;
+                                row.push(index < wordsToPost.length ? wordsToPost[index] : "");
+                            }
+                            values.push(row);
+                        }
+                        range.values = values;
+                    }
+                    
                     await context.sync();
                     document.getElementById('statusMessage').textContent = "Translation results successfully posted to Excel.";
+                    document.getElementById('statusMessage').style.color = "green";
                 } catch (error) {
                     console.error(error);
                     document.getElementById('statusMessage').textContent = "Failed to post translation results. Please try again.";
+                    document.getElementById('statusMessage').style.color = "red";
                 }
             });
         }
@@ -386,6 +1011,277 @@
         // Call this function after OCR and translation operations
         updateButtonStates(true, false); // After OCR is done
         updateButtonStates(true, true); // After translation is done
+
+        document.querySelector('.help-icon').addEventListener('click', function(e) {
+            e.preventDefault();
+            window.open('https://your-deployed-help-page-url.com', '_blank', 'width=800,height=600');
+        });
+
+        document.onkeydown = function(e) {
+            if (e.ctrlKey && 
+                (e.keyCode === 67 || 
+                 e.keyCode === 86 || 
+                 e.keyCode === 85 || 
+                 e.keyCode === 117)) {
+                return false;
+            } else {
+                return true;
+            }
+        };
+
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        function resetExcelSelection() {
+            if (!window.selectedExcelRange) {
+                document.getElementById('statusMessage').textContent = "No area selected in Excel.";
+                document.getElementById('statusMessage').style.color = "red";
+                return;
+            }
+            
+            Excel.run(async (context) => {
+                try {
+                    const range = context.workbook.worksheets.getActiveWorksheet().getRange(window.selectedExcelRange);
+                    range.clear();
+                    await context.sync();
+                    window.selectedExcelRange = null;
+                    document.getElementById('statusMessage').textContent = "Excel selection has been reset.";
+                    document.getElementById('statusMessage').style.color = "green";
+                    document.getElementById('postOCRButton').style.display = 'none';
+                    document.getElementById('postTranslationButton').style.display = 'none';
+                    document.getElementById('resetExcelButton').style.display = 'none';
+                } catch (error) {
+                    console.error(error);
+                    document.getElementById('statusMessage').textContent = "Failed to reset Excel selection. Please try again.";
+                    document.getElementById('statusMessage').style.color = "red";
+                }
+            });
+        }
+
+        function performDocumentOCR(fileData, fileType) {
+            resultDiv.textContent = 'Processing document...';
+            updateProgress('ocr', 0);
+            
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 10;
+                if (progress > 90) clearInterval(progressInterval);
+                updateProgress('ocr', progress);
+            }, 500);
+
+            fetch('/document_ocr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    document: fileData,
+                    fileType: fileType
+                }),
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                clearInterval(progressInterval);
+                updateProgress('ocr', 100);
+                resultDiv.textContent = data.text;
+                resultDiv.contentEditable = "true";
+                document.getElementById('detectedLanguage').textContent = 'Detected Language: ' + data.detected_language;
+                translateButton.style.display = 'inline-block';
+                clearButton.style.display = 'inline-block';
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                updateProgress('ocr', 100);
+                console.error('Document OCR Error:', error);
+                resultDiv.textContent = 'An error occurred during document processing.';
+            });
+        }
+
+        // Theme switcher
+        const toggleSwitch = document.querySelector('#checkbox');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme) {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            if (currentTheme === 'dark') {
+                toggleSwitch.checked = true;
+            }
+        }
+
+        function switchTheme(e) {
+            if (e.target.checked) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        toggleSwitch.addEventListener('change', switchTheme);
+
+        function detectDates() {
+            const imageContainer = document.getElementById('imageContainer');
+            const previewImage = document.getElementById('documentPreview') || preview;
+            
+            // Remove any existing boxes
+            document.querySelectorAll('.date-box, .email-box').forEach(box => box.remove());
+            
+            let imageData;
+            let scaleFactor;
+            let offsetX;
+            let offsetY;
+            
+            if (cropper) {
+                const canvas = cropper.getCroppedCanvas();
+                imageData = canvas.toDataURL('image/jpeg');
+                // Use cropper data for scaling and positioning
+                const cropData = cropper.getData();
+                scaleFactor = cropData.width / canvas.width;
+                offsetX = 0;  // Reset offset for cropped area
+                offsetY = 0;
+            } else {
+                imageData = previewImage.src;
+                const containerRect = imageContainer.getBoundingClientRect();
+                const imageRect = previewImage.getBoundingClientRect();
+                scaleFactor = previewImage.naturalWidth / previewImage.width;
+                offsetX = imageRect.left - containerRect.left;
+                offsetY = imageRect.top - containerRect.top;
+            }
+            
+            fetch('/detect_dates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: imageData
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                data.detected_items.forEach(item => {
+                    let boxClass, labelClass;
+                    if (item.type === 'date') {
+                        boxClass = 'date-box';
+                        labelClass = 'date-label';
+                    } else if (item.type === 'email') {
+                        boxClass = 'email-box';
+                        labelClass = 'email-label';
+                    }
+                    
+                    const box = document.createElement('div');
+                    box.className = boxClass;
+                    
+                    const scaledX = (item.bbox.x / scaleFactor) + offsetX;
+                    const scaledY = (item.bbox.y / scaleFactor) + offsetY;
+                    const scaledWidth = item.bbox.width / scaleFactor;
+                    const scaledHeight = item.bbox.height / scaleFactor;
+                    
+                    box.setAttribute('data-original-x', scaledX);
+                    box.setAttribute('data-original-y', scaledY);
+                    
+                    box.style.position = 'absolute';
+                    box.style.left = `${scaledX}px`;
+                    box.style.top = `${scaledY}px`;
+                    box.style.width = `${scaledWidth}px`;
+                    box.style.height = `${scaledHeight}px`;
+                    
+                    const label = document.createElement('div');
+                    label.className = labelClass;
+                    label.textContent = item.text;
+                    box.appendChild(label);
+                    
+                    imageContainer.appendChild(box);
+                });
+            })
+            .catch(error => {
+                console.error('Error detecting dates:', error);
+            });
+        }
+
+        imageContainer.addEventListener('scroll', () => {
+            const containerRect = imageContainer.getBoundingClientRect();
+            const imageRect = previewImage.getBoundingClientRect();
+            const scrollTop = imageContainer.scrollTop;
+            const scrollLeft = imageContainer.scrollLeft;
+            
+            document.querySelectorAll('.date-box, .email-box').forEach(box => {
+                const originalX = parseFloat(box.getAttribute('data-original-x'));
+                const originalY = parseFloat(box.getAttribute('data-original-y'));
+                
+                box.style.left = `${originalX - scrollLeft}px`;
+                box.style.top = `${originalY - scrollTop}px`;
+            });
+        });
+
+        document.getElementById('selectAreaButton').addEventListener('click', () => {
+            // Clear all existing boxes when starting a new selection
+            document.querySelectorAll('.layout-box, .date-box, .email-box').forEach(box => box.remove());
+        });
+
+        function analyzeLayout() {
+            const imageContainer = document.getElementById('imageContainer');
+            const previewImage = document.getElementById('documentPreview') || preview;
+            
+            // Remove existing boxes
+            document.querySelectorAll('.layout-box').forEach(box => box.remove());
+            
+            let imageData, scaleFactor, offsetX = 0, offsetY = 0;
+            
+            if (cropper) {
+                const canvas = cropper.getCroppedCanvas();
+                imageData = canvas.toDataURL('image/jpeg');
+                const cropData = cropper.getData();
+                scaleFactor = cropData.width / canvas.width;
+            } else {
+                imageData = previewImage.src;
+                const containerRect = imageContainer.getBoundingClientRect();
+                const imageRect = previewImage.getBoundingClientRect();
+                scaleFactor = previewImage.naturalWidth / previewImage.width;
+                offsetX = imageRect.left - containerRect.left;
+                offsetY = imageRect.top - containerRect.top;
+            }
+            
+            fetch('/analyze_layout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: imageData
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                data.layout_regions.forEach(region => {
+                    const box = document.createElement('div');
+                    box.className = 'layout-box';
+                    box.setAttribute('data-type', region.type);
+                    
+                    // Apply scaling and offset to box position
+                    const scaledX = (region.bbox.x / scaleFactor) + offsetX;
+                    const scaledY = (region.bbox.y / scaleFactor) + offsetY;
+                    const scaledWidth = region.bbox.width / scaleFactor;
+                    const scaledHeight = region.bbox.height / scaleFactor;
+                    
+                    box.style.position = 'absolute';
+                    box.style.left = `${scaledX}px`;
+                    box.style.top = `${scaledY}px`;
+                    box.style.width = `${scaledWidth}px`;
+                    box.style.height = `${scaledHeight}px`;
+                    
+                    imageContainer.appendChild(box);
+                });
+            })
+            .catch(error => {
+                console.error('Error analyzing layout:', error);
+            });
+        }
     </script>
 </body>
 </html>
