@@ -6,4 +6,7 @@ torch==1.13.0
 transformers==4.11.3
 easyocr==1.6.2
 numpy==1.21.0
-
+langdetect==1.0.9
+paddlepaddle==2.5.1
+paddleocr==2.7.0
+pdf2image==1.16.3
