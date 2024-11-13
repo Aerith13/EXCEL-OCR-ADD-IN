@@ -18,6 +18,7 @@ import tempfile
 import re
 import fitz  # PyMuPDF
 from pdf2image import convert_from_bytes
+import cv2
 
 app = Flask(__name__, static_url_path='/assets', static_folder='assets')
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -202,57 +203,105 @@ def detect_dates():
 
     return jsonify({"detected_items": detected_items})
 
-@app.route('/analyze_layout', methods=['POST'])
-def analyze_layout():
-    data = request.get_json()
-    if not data or 'image' not in data:
-        return jsonify({"error": "Missing image data"}), 400
+def detect_tables(image_array):
+    # Convert to grayscale if needed
+    if len(image_array.shape) == 3:
+        gray = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image_array
         
-    try:
-        image_data = data['image'].split(',')[1]
-        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-    except Exception as e:
-        return jsonify({"error": f"Error processing image: {str(e)}"}), 400
+    # Threshold the image with a lower threshold to catch lighter lines
+    _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
     
-    result = ocr.ocr(np.array(image), cls=True)
+    # Create kernels for horizontal and vertical lines
+    # Reduced kernel size to detect thinner lines
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
+    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 25))
+    
+    # Detect horizontal and vertical lines
+    horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
+    vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
+    
+    # Combine horizontal and vertical lines
+    table_structure = cv2.addWeighted(horizontal_lines, 1, vertical_lines, 1, 0)
+    
+    # Dilate to connect components
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    table_structure = cv2.dilate(table_structure, kernel, iterations=1)
+    
+    # Find table contours
+    contours, hierarchy = cv2.findContours(table_structure, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
     layout_regions = []
     
-    if result and result[0]:
-        for line in result[0]:
-            bbox = line[0]
-            text = line[1][0]
-            confidence = line[1][1]
-            
-            if confidence < 0.5:
-                continue
-                
-            # Determine region type based on content
-            region_type = "text"  # default type
-            
-            # Check for headers (uppercase text)
-            if text.isupper():
-                region_type = "header"
-            
-            # Check for amounts/numbers
-            elif re.match(r'^[\d,.]+$', text.strip()):
-                region_type = "amount"
-            
-            # Check for table-like content
-            elif '|' in text or '\t' in text:
-                region_type = "table"
-            
+    # Process tables with internal structure
+    for i, contour in enumerate(contours):
+        x, y, w, h = cv2.boundingRect(contour)
+        if w > 30 and h > 30:  # Reduced minimum size threshold
             layout_regions.append({
-                "type": region_type,
-                "text": text,
+                "type": "table",
                 "bbox": {
-                    "x": int(bbox[0][0]),
-                    "y": int(bbox[0][1]),
-                    "width": int(bbox[2][0] - bbox[0][0]),
-                    "height": int(bbox[2][1] - bbox[0][1])
+                    "x": int(x),
+                    "y": int(y),
+                    "width": int(w),
+                    "height": int(h)
                 }
             })
     
-    return jsonify({"layout_regions": layout_regions})
+    return layout_regions
+
+@app.route('/analyze_layout', methods=['POST'])
+def analyze_layout():
+    try:
+        data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({"error": "Missing image data"}), 400
+                
+        image_data = data['image'].split(',')[1]
+        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+        
+        # Convert image for table detection
+        image_array = np.array(image)
+        
+        # Detect tables and lines
+        layout_regions = detect_tables(image_array)
+        
+        # Now get OCR results
+        result = ocr.ocr(image_array, cls=True)
+        
+        if result and result[0]:
+            for line in result[0]:
+                bbox = line[0]
+                text = line[1][0]
+                confidence = line[1][1]
+                
+                if confidence < 0.5:
+                    continue
+                    
+                # Add text regions to layout_regions
+                region_type = "text"
+                if text.isupper():
+                    region_type = "header"
+                elif re.match(r'^[\d,.]+$', text.strip()):
+                    region_type = "amount"
+                elif '|' in text or '\t' in text:
+                    region_type = "table_content"
+                
+                layout_regions.append({
+                    "type": region_type,
+                    "text": text,
+                    "bbox": {
+                        "x": int(bbox[0][0]),
+                        "y": int(bbox[0][1]),
+                        "width": int(bbox[2][0] - bbox[0][0]),
+                        "height": int(bbox[2][1] - bbox[0][1])
+                    }
+                })
+        
+        return jsonify({"layout_regions": layout_regions})
+            
+    except Exception as e:
+        return jsonify({"error": f"Error processing image: {str(e)}"}), 400
 
 def process_document(file_data, file_type):
     if file_type == 'pdf':
