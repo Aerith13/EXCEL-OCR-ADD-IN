@@ -451,6 +451,7 @@
         <button id="performOCRButton" class="btn btn-success mr-2" style="display: none;">Perform OCR</button>
         <button id="detectDatesButton" class="btn btn-warning mr-2" style="display: none;">Detect Fields</button>
         <button id="analyzeLayoutButton" class="btn btn-info mr-2" style="display: none;">Analyze Layout</button>
+        <button id="extractTableButton" class="btn btn-info mr-2" style="display: none;">Extract Table</button>
         <button id="clearButton" class="btn btn-danger" style="display: none;">Clear</button>
     </div>
 
@@ -526,6 +527,7 @@
         clearButton.addEventListener('click', clearAll);
         detectDatesButton.addEventListener('click', detectDates);
         analyzeLayoutButton.addEventListener('click', analyzeLayout);
+        document.getElementById('extractTableButton').addEventListener('click', extractTable);
 
         function handleDrop(e) {
             e.preventDefault();
@@ -628,6 +630,7 @@
                     performOCRButton.style.display = 'inline-block';
                     detectDatesButton.style.display = 'inline-block';
                     analyzeLayoutButton.style.display = 'inline-block';
+                    document.getElementById('extractTableButton').style.display = 'inline-block';
                     clearButton.style.display = 'inline-block';
                 };
                 
@@ -859,6 +862,7 @@
             performOCRButton.style.display = 'none';
             translateButton.style.display = 'none';
             analyzeLayoutButton.style.display = 'none';
+            document.getElementById('extractTableButton').style.display = 'none';
             clearButton.style.display = 'none';
             
             //Hide the Excels button (except select button)
@@ -1303,6 +1307,58 @@
             })
             .catch(error => {
                 console.error('Error analyzing layout:', error);
+            });
+        }
+
+        function extractTable() {
+            let imageData;
+            if (cropper) {
+                const canvas = cropper.getCroppedCanvas();
+                imageData = canvas.toDataURL('image/jpeg');
+            } else {
+                const documentPreview = document.getElementById('documentPreview');
+                if (documentPreview) {
+                    imageData = documentPreview.src;
+                } else {
+                    imageData = preview.src;
+                }
+            }
+
+            fetch('/extract-table', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    image: imageData
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Create a table element from the HTML string
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.tables;
+                    const table = tempDiv.firstChild;
+                    
+                    // Style the table
+                    table.style.borderCollapse = 'collapse';
+                    table.style.width = '100%';
+                    table.style.marginTop = '20px';
+                    
+                    // Clear previous results and append the table
+                    resultDiv.innerHTML = '';
+                    resultDiv.appendChild(table);
+                    
+                    // Show post buttons
+                    document.getElementById('postOCRButton').style.display = 'inline-block';
+                } else {
+                    resultDiv.textContent = data.error || 'Failed to extract table';
+                }
+            })
+            .catch(error => {
+                console.error('Table extraction error:', error);
+                resultDiv.textContent = 'An error occurred during table extraction.';
             });
         }
     </script>

@@ -19,6 +19,13 @@ import re
 import fitz  # PyMuPDF
 from pdf2image import convert_from_bytes
 import cv2
+from paddleocr import PaddleOCR
+from paddleocr import PPStructure
+from pathlib import Path
+import json
+from werkzeug.utils import secure_filename
+import logging
+import wget  # Commented out as it was causing an unresolved import error
 
 app = Flask(__name__, static_url_path='/assets', static_folder='assets')
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -39,6 +46,52 @@ except ImportError as e:
 #ngrok.set_auth_token("2mvdbKaN0WGhsWJLNR6dja75qDb_4C2an6GPPfpZEmZHQ91sW")  #hide this sht
 #public_url = ngrok.connect("5000")  # Expose your Flask app on port 5000 as a string
 #print(" * ngrok tunnel \"{}\" -> \"http://127.0.0.1:5000\"".format(public_url))
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Create upload folder
+UPLOAD_FOLDER = 'uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Get the base directory of paddleocr package
+paddleocr_path = Path(__file__).parent / '.venv' / 'Lib' / 'site-packages' / 'paddleocr'
+
+# Initialize PPStructure for table detection
+table_engine = PPStructure(
+    show_log=True,
+    lang='en',
+    det_model_dir='inference/en_PP-OCRv3_det_infer',
+    rec_model_dir='inference/en_PP-OCRv3_rec_infer',
+    table_model_dir='inference/en_ppstructure_mobile_v2.0_SLANet_infer',
+    layout=True,
+    table=True,
+    ocr=True
+)
+
+
+def download_models():
+    if not os.path.exists('inference'):
+        os.makedirs('inference')
+    
+    models = {
+        'det': 'https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_det_infer.tar',
+        'rec': 'https://paddleocr.bj.bcebos.com/PP-OCRv3/english/en_PP-OCRv3_rec_infer.tar',
+        'table': 'https://paddleocr.bj.bcebos.com/ppstructure/models/slanet/en_ppstructure_mobile_v2.0_SLANet_infer.tar'
+    }
+    
+    for model_type, url in models.items():
+        tar_file = os.path.join('inference', os.path.basename(url))
+        if not os.path.exists(tar_file):
+            wget.download(url, tar_file)
+            os.system(f'cd inference && tar xf {os.path.basename(url)}')
+
+# Call this before initializing the table engine
+download_models()
 
 @app.route('/')
 def index():
@@ -203,105 +256,25 @@ def detect_dates():
 
     return jsonify({"detected_items": detected_items})
 
-def detect_tables(image_array):
-    # Convert to grayscale if needed
-    if len(image_array.shape) == 3:
-        gray = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
-    else:
-        gray = image_array
-        
-    # Threshold the image with a lower threshold to catch lighter lines
-    _, binary = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY_INV)
-    
-    # Create kernels for horizontal and vertical lines
-    # Reduced kernel size to detect thinner lines
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 25))
-    
-    # Detect horizontal and vertical lines
-    horizontal_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, horizontal_kernel, iterations=2)
-    vertical_lines = cv2.morphologyEx(binary, cv2.MORPH_OPEN, vertical_kernel, iterations=2)
-    
-    # Combine horizontal and vertical lines
-    table_structure = cv2.addWeighted(horizontal_lines, 1, vertical_lines, 1, 0)
-    
-    # Dilate to connect components
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    table_structure = cv2.dilate(table_structure, kernel, iterations=1)
-    
-    # Find table contours
-    contours, hierarchy = cv2.findContours(table_structure, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    
-    layout_regions = []
-    
-    # Process tables with internal structure
-    for i, contour in enumerate(contours):
-        x, y, w, h = cv2.boundingRect(contour)
-        if w > 30 and h > 30:  # Reduced minimum size threshold
-            layout_regions.append({
-                "type": "table",
-                "bbox": {
-                    "x": int(x),
-                    "y": int(y),
-                    "width": int(w),
-                    "height": int(h)
-                }
-            })
-    
-    return layout_regions
-
 @app.route('/analyze_layout', methods=['POST'])
 def analyze_layout():
     try:
         data = request.get_json()
         if not data or 'image' not in data:
             return jsonify({"error": "Missing image data"}), 400
-                
+        
+        # Decode and process image
         image_data = data['image'].split(',')[1]
         image = Image.open(io.BytesIO(base64.b64decode(image_data)))
-        
-        # Convert image for table detection
         image_array = np.array(image)
         
-        # Detect tables and lines
-        layout_regions = detect_tables(image_array)
+        # TODO: Implement your own layout analysis here
+        results = []
         
-        # Now get OCR results
-        result = ocr.ocr(image_array, cls=True)
+        return jsonify({'tables': results})
         
-        if result and result[0]:
-            for line in result[0]:
-                bbox = line[0]
-                text = line[1][0]
-                confidence = line[1][1]
-                
-                if confidence < 0.5:
-                    continue
-                    
-                # Add text regions to layout_regions
-                region_type = "text"
-                if text.isupper():
-                    region_type = "header"
-                elif re.match(r'^[\d,.]+$', text.strip()):
-                    region_type = "amount"
-                elif '|' in text or '\t' in text:
-                    region_type = "table_content"
-                
-                layout_regions.append({
-                    "type": region_type,
-                    "text": text,
-                    "bbox": {
-                        "x": int(bbox[0][0]),
-                        "y": int(bbox[0][1]),
-                        "width": int(bbox[2][0] - bbox[0][0]),
-                        "height": int(bbox[2][1] - bbox[0][1])
-                    }
-                })
-        
-        return jsonify({"layout_regions": layout_regions})
-            
     except Exception as e:
-        return jsonify({"error": f"Error processing image: {str(e)}"}), 400
+        return jsonify({"error": f"Error analyzing layout: {str(e)}"}), 500
 
 def process_document(file_data, file_type):
     if file_type == 'pdf':
@@ -347,6 +320,53 @@ def document_ocr():
         })
     except Exception as e:
         return jsonify({"error": f"Error processing document: {str(e)}"}), 500
+
+@app.route('/extract-table', methods=['POST'])
+def extract_table():
+    try:
+        data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({'error': 'No image data provided'}), 400
+
+        # Decode base64 image
+        image_data = data['image'].split(',')[1]
+        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+        
+        # Convert RGBA to RGB if necessary
+        if image.mode == 'RGBA':
+            image = image.convert('RGB')
+        
+        # Save temporary image
+        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_table.jpg')
+        image.save(temp_path)
+        
+        # Process with table engine
+        result = table_engine(temp_path)
+        
+        # Extract table data
+        tables = []
+        for region in result:
+            if isinstance(region, dict) and region.get('type') == 'table':
+                if 'res' in region:
+                    table_html = region['res'].get('html', '')
+                    if table_html:
+                        tables.append(table_html)
+        
+        # Clean up
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        
+        if not tables:
+            return jsonify({'error': 'No tables detected in image'}), 400
+            
+        return jsonify({
+            'success': True,
+            'tables': tables[0]  # Return first table found
+        })
+        
+    except Exception as e:
+        logging.error(f"Error processing image: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
