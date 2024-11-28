@@ -323,50 +323,153 @@ def document_ocr():
 
 @app.route('/extract-table', methods=['POST'])
 def extract_table():
+    if not table_engine:
+        return jsonify({'error': 'Table detection is not available. Please check server logs.'}), 503
+        
     try:
         data = request.get_json()
         if not data or 'image' not in data:
             return jsonify({'error': 'No image data provided'}), 400
 
-        # Decode base64 image
-        image_data = data['image'].split(',')[1]
-        image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+        # Decode and process image
+        try:
+            image_data = data['image'].split(',')[1]
+            image = Image.open(io.BytesIO(base64.b64decode(image_data)))
+            if image.mode == 'RGBA':
+                image = image.convert('RGB')
+            
+            # Convert to numpy array for processing
+            image_np = np.array(image)
+            
+            # Detect table boundaries
+            table_regions = detect_table_boundaries(image_np)
+            
+            if not table_regions:
+                return jsonify({
+                    'error': 'No tables detected',
+                    'suggestion': 'Please ensure the image contains clear table boundaries'
+                }), 400
+            
+            # Process each detected table
+            processed_tables = []
+            for region in table_regions:
+                # Extract table region
+                x1, y1, x2, y2 = region['bbox']
+                table_image = image_np[y1:y2, x1:x2]
+                
+                # Save temporary image
+                temp_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_table_{len(processed_tables)}.jpg')
+                Image.fromarray(table_image).save(temp_path)
+                
+                # Process with table engine
+                result = table_engine(temp_path)
+                
+                # Extract structured data
+                table_data = extract_table_structure(result)
+                if table_data:
+                    processed_tables.append({
+                        'html': table_data['html'],
+                        'structure': table_data['structure'],
+                        'bbox': region['bbox'],
+                        'confidence': region['confidence']
+                    })
+                
+                # Clean up
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            
+            if not processed_tables:
+                return jsonify({
+                    'error': 'Failed to extract table structure',
+                    'suggestion': 'Try adjusting the image clarity or table alignment'
+                }), 400
+                
+            return jsonify({
+                'success': True,
+                'tables': processed_tables,
+                'message': f'Successfully extracted {len(processed_tables)} table(s)'
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'error': 'Table processing failed',
+                'details': str(e)
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error in table extraction: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+def detect_table_boundaries(image):
+    """
+    Detect table boundaries in the image using PaddleOCR's structure analysis
+    """
+    try:
+        # Use PPStructure to detect layout
+        result = table_engine(image)
         
-        # Convert RGBA to RGB if necessary
-        if image.mode == 'RGBA':
-            image = image.convert('RGB')
-        
-        # Save temporary image
-        temp_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_table.jpg')
-        image.save(temp_path)
-        
-        # Process with table engine
-        result = table_engine(temp_path)
-        
-        # Extract table data
-        tables = []
+        table_regions = []
         for region in result:
             if isinstance(region, dict) and region.get('type') == 'table':
-                if 'res' in region:
-                    table_html = region['res'].get('html', '')
-                    if table_html:
-                        tables.append(table_html)
+                bbox = region.get('bbox', [])
+                if len(bbox) == 4:  # Ensure valid bbox
+                    table_regions.append({
+                        'bbox': bbox,
+                        'confidence': region.get('confidence', 0)
+                    })
         
-        # Clean up
-        if os.path.exists(temp_path):
-            os.remove(temp_path)
-        
-        if not tables:
-            return jsonify({'error': 'No tables detected in image'}), 400
-            
-        return jsonify({
-            'success': True,
-            'tables': tables[0]  # Return first table found
-        })
-        
+        return table_regions
     except Exception as e:
-        logging.error(f"Error processing image: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"Error detecting table boundaries: {str(e)}")
+        return []
+
+def extract_table_structure(result):
+    """
+    Extract structured table data from PPStructure result
+    """
+    try:
+        if not result or not isinstance(result, list):
+            return None
+            
+        for region in result:
+            if isinstance(region, dict) and region.get('type') == 'table':
+                if 'res' not in region:
+                    continue
+                    
+                table_res = region['res']
+                if not isinstance(table_res, dict):
+                    continue
+                    
+                # Extract HTML and cell structure
+                html = table_res.get('html', '')
+                cells = table_res.get('cells', [])
+                
+                # Build structured representation
+                rows = {}
+                for cell in cells:
+                    row_idx = cell.get('row_idx', 0)
+                    col_idx = cell.get('col_idx', 0)
+                    text = cell.get('text', '')
+                    
+                    if row_idx not in rows:
+                        rows[row_idx] = {}
+                    rows[row_idx][col_idx] = text
+                
+                # Convert to ordered structure
+                structured_data = []
+                for row_idx in sorted(rows.keys()):
+                    row = rows[row_idx]
+                    structured_data.append([row.get(col_idx, '') for col_idx in sorted(row.keys())])
+                
+                return {
+                    'html': html,
+                    'structure': structured_data
+                }
+                
+        return None
+    except Exception as e:
+        logger.error(f"Error extracting table structure: {str(e)}")
+        return None
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

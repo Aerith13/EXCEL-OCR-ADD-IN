@@ -1324,6 +1324,8 @@
                 }
             }
 
+            resultDiv.textContent = 'Detecting and extracting tables...';
+            
             fetch('/extract-table', {
                 method: 'POST',
                 headers: {
@@ -1336,30 +1338,70 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Create a table element from the HTML string
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = data.tables;
-                    const table = tempDiv.firstChild;
+                    resultDiv.innerHTML = ''; // Clear previous results
                     
-                    // Style the table
-                    table.style.borderCollapse = 'collapse';
-                    table.style.width = '100%';
-                    table.style.marginTop = '20px';
+                    data.tables.forEach((table, index) => {
+                        // Create container for each table
+                        const tableContainer = document.createElement('div');
+                        tableContainer.className = 'table-container mb-4';
+                        
+                        // Add table info
+                        const tableInfo = document.createElement('div');
+                        tableInfo.className = 'table-info mb-2';
+                        tableInfo.innerHTML = `
+                            <strong>Table ${index + 1}</strong> 
+                            (Confidence: ${(table.confidence * 100).toFixed(1)}%)
+                            <button class="btn btn-sm btn-outline-primary ml-2" 
+                                    onclick="copyTableToClipboard(this.parentElement.nextElementSibling)">
+                                Copy Table
+                            </button>
+                        `;
+                        
+                        // Create table element from HTML
+                        const tableElement = document.createElement('div');
+                        tableElement.innerHTML = table.html;
+                        const tableNode = tableElement.firstChild;
+                        
+                        // Style the table
+                        tableNode.style.borderCollapse = 'collapse';
+                        tableNode.style.width = '100%';
+                        tableNode.style.marginTop = '10px';
+                        
+                        // Add to container
+                        tableContainer.appendChild(tableInfo);
+                        tableContainer.appendChild(tableNode);
+                        resultDiv.appendChild(tableContainer);
+                    });
                     
-                    // Clear previous results and append the table
-                    resultDiv.innerHTML = '';
-                    resultDiv.appendChild(table);
-                    
-                    // Show post buttons
+                    // Show post button
                     document.getElementById('postOCRButton').style.display = 'inline-block';
                 } else {
-                    resultDiv.textContent = data.error || 'Failed to extract table';
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            ${data.error}
+                            ${data.suggestion ? `<br><small>${data.suggestion}</small>` : ''}
+                        </div>
+                    `;
                 }
             })
             .catch(error => {
                 console.error('Table extraction error:', error);
-                resultDiv.textContent = 'An error occurred during table extraction.';
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        An error occurred during table extraction.
+                        <br><small>Please try again or contact support if the issue persists.</small>
+                    </div>
+                `;
             });
+        }
+
+        function copyTableToClipboard(table) {
+            const range = document.createRange();
+            range.selectNode(table);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
         }
     </script>
 </body>
