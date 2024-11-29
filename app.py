@@ -402,26 +402,118 @@ def extract_table():
 
 def detect_table_boundaries(image):
     """
-    Detect table boundaries in the image using PaddleOCR's structure analysis
+    Enhanced table detection for both regular and irregular tables
     """
     try:
-        # Use PPStructure to detect layout
+        # First attempt: Use PPStructure for standard table detection
         result = table_engine(image)
         
         table_regions = []
         for region in result:
             if isinstance(region, dict) and region.get('type') == 'table':
                 bbox = region.get('bbox', [])
-                if len(bbox) == 4:  # Ensure valid bbox
+                if len(bbox) == 4:
+                    confidence = region.get('score', 0.0)
                     table_regions.append({
                         'bbox': bbox,
-                        'confidence': region.get('confidence', 0)
+                        'confidence': confidence,
+                        'type': 'structured'
+                    })
+        
+        # If no tables found, try detecting aligned text patterns
+        if not table_regions:
+            # Get all text blocks with positions
+            ocr_result = ocr.ocr(image, cls=True)
+            if ocr_result and ocr_result[0]:
+                text_blocks = []
+                for line in ocr_result[0]:
+                    ((x1, y1), (x2, y2), (x3, y3), (x4, y4)), (text, conf) = line
+                    text_blocks.append({
+                        'text': text,
+                        'bbox': [min(x1, x2, x3, x4), min(y1, y2, y3, y4),
+                                max(x1, x2, x3, x4), max(y1, y2, y3, y4)],
+                        'confidence': conf
+                    })
+                
+                # Group text blocks by vertical alignment
+                aligned_blocks = detect_aligned_text_blocks(text_blocks)
+                if aligned_blocks:
+                    table_regions.append({
+                        'bbox': get_table_bounds(aligned_blocks),
+                        'confidence': calculate_alignment_confidence(aligned_blocks),
+                        'type': 'aligned'
                     })
         
         return table_regions
     except Exception as e:
-        logger.error(f"Error detecting table boundaries: {str(e)}")
+        logger.error(f"Error in enhanced table detection: {str(e)}")
         return []
+
+def detect_aligned_text_blocks(text_blocks):
+    """
+    Detect text blocks that form table-like structures through alignment
+    """
+    # Sort blocks by vertical position
+    sorted_blocks = sorted(text_blocks, key=lambda x: x['bbox'][1])
+    
+    # Group blocks into rows based on y-coordinate proximity
+    rows = []
+    current_row = [sorted_blocks[0]]
+    y_threshold = 10  # Adjust based on your needs
+    
+    for block in sorted_blocks[1:]:
+        if abs(block['bbox'][1] - current_row[0]['bbox'][1]) < y_threshold:
+            current_row.append(block)
+        else:
+            rows.append(current_row)
+            current_row = [block]
+    rows.append(current_row)
+    
+    # Check if rows have consistent column alignment
+    if len(rows) >= 2:  # At least 2 rows needed for a table
+        # Sort blocks in each row by x-coordinate
+        aligned_rows = [sorted(row, key=lambda x: x['bbox'][0]) for row in rows]
+        
+        # Check column alignment
+        if is_columnar_alignment(aligned_rows):
+            return aligned_rows
+    
+    return None
+
+def get_table_bounds(aligned_blocks):
+    """
+    Calculate the bounding box of a table from aligned text blocks
+    """
+    min_x = min([block['bbox'][0] for block in aligned_blocks])
+    max_x = max([block['bbox'][2] for block in aligned_blocks])
+    min_y = min([block['bbox'][1] for block in aligned_blocks])
+    max_y = max([block['bbox'][3] for block in aligned_blocks])
+    return [min_x, min_y, max_x, max_y]
+
+def calculate_alignment_confidence(aligned_blocks):
+    """
+    Calculate the confidence of a table based on alignment
+    """
+    # Calculate the average confidence of the blocks
+    avg_confidence = sum([block['confidence'] for block in aligned_blocks]) / len(aligned_blocks)
+    
+    # Calculate the standard deviation of the block positions
+    std_dev = np.std([block['bbox'][0] for block in aligned_blocks])
+    
+    # Calculate the alignment confidence
+    alignment_confidence = 1 - (std_dev / (max([block['bbox'][2] for block in aligned_blocks]) - min([block['bbox'][0] for block in aligned_blocks])))
+    
+    # Combine the two confidences
+    return avg_confidence * alignment_confidence
+
+def is_columnar_alignment(aligned_rows):
+    """
+    Check if the blocks in each row are aligned in columns
+    """
+    for row in aligned_rows:
+        if len(set([block['bbox'][0] for block in row])) > 1:
+            return False
+    return True
 
 def extract_table_structure(result):
     """

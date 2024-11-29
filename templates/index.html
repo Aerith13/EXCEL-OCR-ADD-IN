@@ -436,7 +436,7 @@
             </label>
         </div>
         <h1>Excel OCR Addin</h1>
-        <a href="https://excel-add-in.gitbook.io/excel-ocr-translation-tool" class="help-icon" title="Help" target="_blank">
+        <a href="https://excel-add-in.gitbook.io/excel-ocr-translation-tool/ocr-help-center" class="help-icon" title="Help" target="_blank">
             <img src="https://img.icons8.com/material-outlined/24/000000/help.png" alt="Help">
         </a>
     </div>
@@ -446,11 +446,8 @@
         <img id="preview" src="" alt="Image preview" style="display: none;">
     </div>
     <div class="button-group mb-3">
-        <button id="uploadButton" class="btn btn-success mr-2">Upload Image</button>
         <button id="selectAreaButton" class="btn btn-success mr-2" style="display: none;">Select Area</button>
         <button id="performOCRButton" class="btn btn-success mr-2" style="display: none;">Perform OCR</button>
-        <button id="detectDatesButton" class="btn btn-warning mr-2" style="display: none;">Detect Fields</button>
-        <button id="analyzeLayoutButton" class="btn btn-info mr-2" style="display: none;">Analyze Layout</button>
         <button id="extractTableButton" class="btn btn-info mr-2" style="display: none;">Extract Table</button>
         <button id="clearButton" class="btn btn-danger" style="display: none;">Clear</button>
     </div>
@@ -505,28 +502,22 @@
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         const preview = document.getElementById('preview');
-        const uploadButton = document.getElementById('uploadButton');
         const selectAreaButton = document.getElementById('selectAreaButton');
         const performOCRButton = document.getElementById('performOCRButton');
         const translateButton = document.getElementById('translateButton');
         const resultDiv = document.getElementById('result');
         const translationResultDiv = document.getElementById('translationResult');
         const clearButton = document.getElementById('clearButton');
-        const detectDatesButton = document.getElementById('detectDatesButton');
-        const analyzeLayoutButton = document.getElementById('analyzeLayoutButton');
         let cropper;
 
         dropZone.addEventListener('click', () => fileInput.click());
         dropZone.addEventListener('dragover', (e) => e.preventDefault());
         dropZone.addEventListener('drop', handleDrop);
         fileInput.addEventListener('change', handleFileSelect);
-        uploadButton.addEventListener('click', () => fileInput.click());
         selectAreaButton.addEventListener('click', toggleCropping);
         performOCRButton.addEventListener('click', performOCR);
         translateButton.addEventListener('click', translateText);
         clearButton.addEventListener('click', clearAll);
-        detectDatesButton.addEventListener('click', detectDates);
-        analyzeLayoutButton.addEventListener('click', analyzeLayout);
         document.getElementById('extractTableButton').addEventListener('click', extractTable);
 
         function handleDrop(e) {
@@ -628,8 +619,6 @@
                     }
                     
                     performOCRButton.style.display = 'inline-block';
-                    detectDatesButton.style.display = 'inline-block';
-                    analyzeLayoutButton.style.display = 'inline-block';
                     document.getElementById('extractTableButton').style.display = 'inline-block';
                     clearButton.style.display = 'inline-block';
                 };
@@ -766,7 +755,6 @@
                 document.getElementById('detectedLanguage').textContent = 'Detected Language: ' + data.detected_language;
                 translateButton.style.display = 'inline-block';
                 clearButton.style.display = 'inline-block';
-                detectDatesButton.style.display = 'inline-block';
             })
             .catch(error => {
                 clearInterval(progressInterval);
@@ -861,7 +849,6 @@
             selectAreaButton.style.display = 'none';
             performOCRButton.style.display = 'none';
             translateButton.style.display = 'none';
-            analyzeLayoutButton.style.display = 'none';
             document.getElementById('extractTableButton').style.display = 'none';
             clearButton.style.display = 'none';
             
@@ -1041,7 +1028,7 @@
 
         document.querySelector('.help-icon').addEventListener('click', function(e) {
             e.preventDefault();
-            window.open('https://excel-add-in.gitbook.io/excel-ocr-translation-tool', '_blank', 'width=800,height=600');
+            window.open('https://excel-add-in.gitbook.io/excel-ocr-translation-tool/ocr-help-center', '_blank', 'width=800,height=600');
         });
 
         document.onkeydown = function(e) {
@@ -1151,86 +1138,6 @@
 
         toggleSwitch.addEventListener('change', switchTheme);
 
-        function detectDates() {
-            const imageContainer = document.getElementById('imageContainer');
-            const previewImage = document.getElementById('documentPreview') || preview;
-            
-            // Remove any existing boxes
-            document.querySelectorAll('.date-box, .email-box').forEach(box => box.remove());
-            
-            let imageData;
-            let scaleFactor;
-            let offsetX;
-            let offsetY;
-            
-            if (cropper) {
-                const canvas = cropper.getCroppedCanvas();
-                imageData = canvas.toDataURL('image/jpeg');
-                // Use cropper data for scaling and positioning
-                const cropData = cropper.getData();
-                scaleFactor = cropData.width / canvas.width;
-                offsetX = 0;  // Reset offset for cropped area
-                offsetY = 0;
-            } else {
-                imageData = previewImage.src;
-                const containerRect = imageContainer.getBoundingClientRect();
-                const imageRect = previewImage.getBoundingClientRect();
-                scaleFactor = previewImage.naturalWidth / previewImage.width;
-                offsetX = imageRect.left - containerRect.left;
-                offsetY = imageRect.top - containerRect.top;
-            }
-            
-            fetch('/detect_dates', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    image: imageData
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                data.detected_items.forEach(item => {
-                    let boxClass, labelClass;
-                    if (item.type === 'date') {
-                        boxClass = 'date-box';
-                        labelClass = 'date-label';
-                    } else if (item.type === 'email') {
-                        boxClass = 'email-box';
-                        labelClass = 'email-label';
-                    }
-                    
-                    const box = document.createElement('div');
-                    box.className = boxClass;
-                    
-                    const scaledX = (item.bbox.x / scaleFactor) + offsetX;
-                    const scaledY = (item.bbox.y / scaleFactor) + offsetY;
-                    const scaledWidth = item.bbox.width / scaleFactor;
-                    const scaledHeight = item.bbox.height / scaleFactor;
-                    
-                    box.setAttribute('data-original-x', scaledX);
-                    box.setAttribute('data-original-y', scaledY);
-                    
-                    box.style.position = 'absolute';
-                    box.style.left = `${scaledX}px`;
-                    box.style.top = `${scaledY}px`;
-                    box.style.width = `${scaledWidth}px`;
-                    box.style.height = `${scaledHeight}px`;
-                    
-                    const label = document.createElement('div');
-                    label.className = labelClass;
-                    label.textContent = item.text;
-                    box.appendChild(label);
-                    
-                    imageContainer.appendChild(box);
-                });
-            })
-            .catch(error => {
-                console.error('Error detecting dates:', error);
-            });
-        }
-
         imageContainer.addEventListener('scroll', () => {
             const containerRect = imageContainer.getBoundingClientRect();
             const imageRect = previewImage.getBoundingClientRect();
@@ -1250,65 +1157,6 @@
             // Clear all existing boxes when starting a new selection
             document.querySelectorAll('.layout-box, .date-box, .email-box').forEach(box => box.remove());
         });
-
-        function analyzeLayout() {
-            const imageContainer = document.getElementById('imageContainer');
-            const previewImage = document.getElementById('documentPreview') || preview;
-            
-            // Remove existing boxes
-            document.querySelectorAll('.layout-box').forEach(box => box.remove());
-            
-            let imageData, scaleFactor, offsetX = 0, offsetY = 0;
-            
-            if (cropper) {
-                const canvas = cropper.getCroppedCanvas();
-                imageData = canvas.toDataURL('image/jpeg');
-                const cropData = cropper.getData();
-                scaleFactor = cropData.width / canvas.width;
-            } else {
-                imageData = previewImage.src;
-                const containerRect = imageContainer.getBoundingClientRect();
-                const imageRect = previewImage.getBoundingClientRect();
-                scaleFactor = previewImage.naturalWidth / previewImage.width;
-                offsetX = imageRect.left - containerRect.left;
-                offsetY = imageRect.top - containerRect.top;
-            }
-            
-            fetch('/analyze_layout', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    image: imageData
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                data.layout_regions.forEach(region => {
-                    const box = document.createElement('div');
-                    box.className = 'layout-box';
-                    box.setAttribute('data-type', region.type);
-                    
-                    // Apply scaling and offset to box position
-                    const scaledX = (region.bbox.x / scaleFactor) + offsetX;
-                    const scaledY = (region.bbox.y / scaleFactor) + offsetY;
-                    const scaledWidth = region.bbox.width / scaleFactor;
-                    const scaledHeight = region.bbox.height / scaleFactor;
-                    
-                    box.style.position = 'absolute';
-                    box.style.left = `${scaledX}px`;
-                    box.style.top = `${scaledY}px`;
-                    box.style.width = `${scaledWidth}px`;
-                    box.style.height = `${scaledHeight}px`;
-                    
-                    imageContainer.appendChild(box);
-                });
-            })
-            .catch(error => {
-                console.error('Error analyzing layout:', error);
-            });
-        }
 
         function extractTable() {
             let imageData;
