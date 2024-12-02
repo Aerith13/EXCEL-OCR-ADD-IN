@@ -562,6 +562,6 @@ def extract_table_structure(result):
     except Exception as e:
         logger.error(f"Error extracting table structure: {str(e)}")
         return None
-
+    
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
