@@ -14,7 +14,7 @@ This project is an OCR (Optical Character Recognition) Add-in for excel that all
   - [Posting Results to Excel](#posting-results-to-excel)
   - [Reset Functionality](#reset-functionaity)
 - [Requirements](#requirements)
-- [License](#license)
+
 
 ## Features
 - Extract text from images and PDF documents.
