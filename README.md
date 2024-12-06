@@ -1,6 +1,7 @@
 ## EXCEL OCR ADD-IN
 This project is an OCR (Optical Character Recognition) Add-in for excel that alllows users to extract text from images and documents. It utilizes various lbraries and frameworks to provide a seamless experince for user. 
 
+![Uploading EXCEL OCR Add-in.png…]()
 
 
 ## Table of Contents
