@@ -36,7 +36,7 @@ To set up the project, follow these steps.
 2. **Create a virtual environment (optional but recommeded):**
    ```bash
    python -m venv venv
-   source venv/bin/activate # On indows use `venv\Scripts\activate`
+   source venv/bin/activate # On Windows use `venv\Scripts\activate`
    ```
 
 3. **Install the required packages:**
