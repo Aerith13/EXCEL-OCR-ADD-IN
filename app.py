@@ -43,7 +43,7 @@ except ImportError as e:
     sys.exit(1)
 
 # Start ngrok
-#ngrok.set_auth_token("2mvdbKaN0WGhsWJLNR6dja75qDb_4C2an6GPPfpZEmZHQ91sW")  #hide this sht
+#ngrok.set_auth_token("dis_wer_u_put_ur_ngrok_key")  #hide this sht
 #public_url = ngrok.connect("5000")  # Expose your Flask app on port 5000 as a string
 #print(" * ngrok tunnel \"{}\" -> \"http://127.0.0.1:5000\"".format(public_url))
 
